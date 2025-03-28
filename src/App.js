@@ -15,11 +15,6 @@ function App() {
     loadGeoDescriptions();
   }, []);
 
-  console.log(`Num of results: ${geoDescriptions.length}`);
-  geoDescriptions.forEach((geoDesc) => {
-    console.log(`***(ID=${geoDesc.id})***\n${geoDesc.x}; ${geoDesc.y}\n${geoDesc.description}`);
-  });
-
   return (
     <div style={{
       display: "flex",

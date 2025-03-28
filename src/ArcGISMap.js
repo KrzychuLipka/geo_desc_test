@@ -13,11 +13,11 @@ const ArcGISMap = () => {
     const initialZoom = 20;
     const mapServerUrl = "https://arcgis.cenagis.edu.pl/server/rest/services/SION2_Topo_MV/sion2_topo_indoor_all/MapServer/";
     const buildingId = 199;
+    const defaultLevel = 3;
+    const [level, setLevel] = useState(defaultLevel);
+    const [layers, setLayers] = useState([]);
 
     esriConfig.apiKey = apiKey;
-
-    const [level, setLevel] = useState(parseInt(new URLSearchParams(window.location.search).get("level")) || 3);
-    const [layers, setLayers] = useState([]);
 
     useEffect(() => {
         const map = new Map({ basemap: baseMap });
@@ -27,19 +27,29 @@ const ArcGISMap = () => {
             center: [initialLng, initialLat],
             zoom: initialZoom
         });
-
-        const layerUrls = Array.from({ length: 7 }, (_, i) => `${mapServerUrl}${i}`);
-        const loadedLayers = layerUrls.map(url => new FeatureLayer({ url }));
-        map.addMany(loadedLayers);
+        const layerUrls = [
+            `${mapServerUrl}6`, 
+            `${mapServerUrl}5`,  
+            `${mapServerUrl}4`,  
+            `${mapServerUrl}3`,  
+            `${mapServerUrl}2`,  
+            `${mapServerUrl}1`,  
+            `${mapServerUrl}0` 
+        ];
+        const loadedLayers = layerUrls.map((url) => {
+            return new FeatureLayer({ url });
+        });
+        loadedLayers.forEach(layer => {
+            map.add(layer);
+        });
         setLayers(loadedLayers);
-
         return () => {
             mapView.destroy();
         };
     }, []);
 
     useEffect(() => {
-        layers.forEach(layer => {
+        layers.forEach((layer) => {
             layer.definitionExpression = `budynek_id IN (${buildingId}) AND poziom = ${level}`;
             layer.refresh();
         });
@@ -68,7 +78,7 @@ const ArcGISMap = () => {
                     flexDirection: "column",
                     gap: "8px"
                 }}>
-                {[1, 2, 3, 4].map(floor => {
+                {[4, 3, 2, 1].map(floor => {
                     const isActive = level === floor;
                     return (
                         <button
@@ -83,9 +93,9 @@ const ArcGISMap = () => {
                                 fontSize: "16px",
                                 fontWeight: "bold"
                             }}>
-                            {floor - 2}
+                            {floor - 3}
                         </button>
-                    )
+                    );
                 })}
             </div>
         </div>
