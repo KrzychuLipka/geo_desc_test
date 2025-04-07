@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import './App.css';
 import ArcGISMap from './ArcGISMap';
-import { fetchGeoDescriptions } from "./GeoDescriptionService";
+import GeoDescPanel from './GeoDescPanel';
+import Loader from './Loader';
+import { generatedGeoDescriptions, fetchGeoDescriptions } from "./GeoDescRepo";
 
 function App() {
   const [geoDescriptions, setGeoDescriptions] = useState([]);
@@ -13,6 +15,7 @@ function App() {
     };
     loadGeoDescriptions();
   }, []);
+  const dataLoaded = geoDescriptions && geoDescriptions.length > 0;
   return (
     <div style={{
       display: "flex",
@@ -20,11 +23,13 @@ function App() {
       height: "100vh",
       overflow: "hidden"
     }}>
-      {geoDescriptions.length > 0 ? (
-        <ArcGISMap geoDescriptions={geoDescriptions} />
-      ) : (
-        <div>Ładowanie geo-opisów...</div>
-      )}
+      {
+        dataLoaded ? <ArcGISMap geoDescriptions={geoDescriptions} /> : <Loader />
+      }
+      {
+        dataLoaded && generatedGeoDescriptions && generatedGeoDescriptions.length > 0 ?
+          <GeoDescPanel geoDescriptions={generatedGeoDescriptions} /> : null
+      }
     </div>
   );
 }

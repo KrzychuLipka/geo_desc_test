@@ -1,6 +1,7 @@
 import "@arcgis/core/assets/esri/themes/dark/main.css";
 
-const GeoDescPanel = () => {
+const GeoDescPanel = ({ geoDescriptions }) => {
+    const geoDesc = geoDescriptions?.[0]?.geoDesc || "";
     return (
         <div style={{
             width: "100%",
@@ -11,7 +12,12 @@ const GeoDescPanel = () => {
         }}>
             <p style={{
                 color: "white"
-            }} id="geoDesc"></p>
+            }} id="geoDesc">{geoDesc}</p>
+            <p style={{
+                color: "white"
+            }} id="geoDesc">
+                Indicate the point on the map where you think this description applies.
+            </p>
         </div>
     );
 };

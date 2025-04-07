@@ -7,6 +7,7 @@ import esriConfig from "@arcgis/core/config";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Graphic from "@arcgis/core/Graphic";
 import proj4 from "proj4";
+import { generatedGeoDescriptions } from './GeoDescRepo';
 
 const epsg4326 = "EPSG:4326";
 const epsg2180 = "EPSG:2180";
@@ -31,6 +32,8 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const [level, setLevel] = useState(defaultLevel);
     const [baseLayers, setBaseLayers] = useState([]);
     const geoDescLayerRef = useRef(null);
+    // TODO
+    const [dialogVisible, setDialogVisible] = useState(false);
 
     esriConfig.apiKey = apiKey;
     proj4.defs(epsg4326, "+proj=longlat +datum=WGS84 +no_defs +type=crs");
@@ -53,6 +56,7 @@ const ArcGISMap = ({ geoDescriptions }) => {
         map.add(geoDescLayer);
 
         updateGeoDescriptionsLayer(geoDescLayer, geoDescriptions, level);
+        setMapPointclickListener(mapView, geoDescLayer);
 
         return () => {
             mapView.destroy();
@@ -70,6 +74,30 @@ const ArcGISMap = ({ geoDescriptions }) => {
         }
     }, [level, baseLayers, geoDescriptions]);
 
+    const setMapPointclickListener = (
+        mapView,
+        geoDescLayer,
+    ) => {
+        mapView.on("click", (event) => {
+            mapView.hitTest(event).then((response) => {
+                if (response.results.length) {
+                    const result = response.results.find((result) => result.graphic && result.graphic.layer === geoDescLayer);
+                    if (result) {
+                        const graphic = result.graphic;
+                        const id = graphic.attributes.id;
+                        // TODO
+                        setDialogVisible(true);
+                        if (id === generatedGeoDescriptions[0].referenceDescId) {
+                            console.log("DOBRZE!");
+                        } else {
+                            console.log("ŹLE:( " + id);
+                        }
+                    }
+                }
+            });
+        });
+    };
+
     const updateGeoDescriptionsLayer = (
         graphicsLayer,
         geoDescriptions,
@@ -86,7 +114,11 @@ const ArcGISMap = ({ geoDescriptions }) => {
                 };
                 const pointGraphic = new Graphic({
                     geometry: point,
-                    symbol: markerSymbol
+                    symbol: markerSymbol,
+                    attributes: {
+                        id: desc.id,
+                        description: desc.description,
+                    }
                 });
                 graphicsLayer.add(pointGraphic);
             }
