@@ -7,7 +7,7 @@ import esriConfig from "@arcgis/core/config";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Graphic from "@arcgis/core/Graphic";
 import proj4 from "proj4";
-import { generatedGeoDescriptions } from './GeoDescRepo';
+import geoDescRepo from './GeoDescRepo';
 
 const epsg4326 = "EPSG:4326";
 const epsg2180 = "EPSG:2180";
@@ -29,11 +29,17 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const initialZoom = 20;
     const buildingId = 199;
     const defaultLevel = 3;
+
     const [level, setLevel] = useState(defaultLevel);
     const [baseLayers, setBaseLayers] = useState([]);
-    const geoDescLayerRef = useRef(null);
-    // TODO
     const [dialogVisible, setDialogVisible] = useState(false);
+    const [naturalnessDialogVisible, setNaturalnessDialogVisible] = useState(false);
+    const [selectedGeoDescId, setSelectedGeoDescId] = useState(null);
+    const [showInvalidAnswerToast, setShowInvalidAnswerToast] = useState(false);
+    const [accuracy, setAccuracy] = useState(0);
+    const [naturalness, setNaturalness] = useState(null);
+
+    const geoDescLayerRef = useRef(null);
 
     esriConfig.apiKey = apiKey;
     proj4.defs(epsg4326, "+proj=longlat +datum=WGS84 +no_defs +type=crs");
@@ -63,6 +69,16 @@ const ArcGISMap = ({ geoDescriptions }) => {
         };
     }, []);
 
+    // TODO remove after tests
+    useEffect(() => {
+        const handleGeoDescRepoUpdate = () => {
+            geoDescRepo.printTestResults();
+        };
+
+        geoDescRepo.subscribe(handleGeoDescRepoUpdate);
+        handleGeoDescRepoUpdate();
+    }, []);
+
     useEffect(() => {
         baseLayers.forEach((layer) => {
             layer.definitionExpression = `budynek_id IN (${buildingId}) AND poziom = ${level}`;
@@ -74,35 +90,22 @@ const ArcGISMap = ({ geoDescriptions }) => {
         }
     }, [level, baseLayers, geoDescriptions]);
 
-    const setMapPointclickListener = (
-        mapView,
-        geoDescLayer,
-    ) => {
+    const setMapPointclickListener = (mapView, geoDescLayer) => {
         mapView.on("click", (event) => {
             mapView.hitTest(event).then((response) => {
                 if (response.results.length) {
                     const result = response.results.find((result) => result.graphic && result.graphic.layer === geoDescLayer);
                     if (result) {
-                        const graphic = result.graphic;
-                        const id = graphic.attributes.id;
-                        // TODO
+                        const id = result.graphic.attributes.id;
+                        setSelectedGeoDescId(id);
                         setDialogVisible(true);
-                        if (id === generatedGeoDescriptions[0].referenceDescId) {
-                            console.log("DOBRZE!");
-                        } else {
-                            console.log("ŹLE:( " + id);
-                        }
                     }
                 }
             });
         });
     };
 
-    const updateGeoDescriptionsLayer = (
-        graphicsLayer,
-        geoDescriptions,
-        activeLevel,
-    ) => {
+    const updateGeoDescriptionsLayer = (graphicsLayer, geoDescriptions, activeLevel) => {
         graphicsLayer.removeAll();
         geoDescriptions.forEach(desc => {
             if (desc.level === activeLevel) {
@@ -125,29 +128,49 @@ const ArcGISMap = ({ geoDescriptions }) => {
         });
     };
 
+    const handleYesClick = () => {
+        if (selectedGeoDescId === geoDescRepo.getActiveGeneratedGeoDescription()?.referenceDescId) {
+            setAccuracy(prev => {
+                const newVal = prev + 1;
+                geoDescRepo.updateAccuracy(newVal);
+                setDialogVisible(false);
+                setNaturalnessDialogVisible(true);
+                return newVal;
+            });
+        } else {
+            setAccuracy(prev => {
+                const newVal = prev - 1;
+                geoDescRepo.updateAccuracy(newVal);
+                console.log(`selectedGeoDescId=${selectedGeoDescId}`);
+                setShowInvalidAnswerToast(true);
+                setTimeout(() => setShowInvalidAnswerToast(false), 2000);
+                return newVal;
+            });
+            setDialogVisible(false);
+            setSelectedGeoDescId(null);
+        }
+    };
+
+    const handleNoClick = () => {
+        setDialogVisible(false);
+        setSelectedGeoDescId(null);
+    };
+
+    const handleRateNaturalness = () => {
+        if (naturalness < 1 || naturalness > 10) {
+            alert("Please select a value between 1 and 10.");
+            return;
+        }
+        geoDescRepo.updateNaturalness(naturalness);
+        setNaturalnessDialogVisible(false);
+        setNaturalness(null);
+    };
+
     return (
-        <div
-            style={{
-                position: "relative",
-                width: "100vw",
-                height: "100%",
-                flex: "1"
-            }}>
-            <div
-                id="mapView"
-                style={{
-                    width: "100%",
-                    height: "100%"
-                }}></div>
-            <div
-                style={{
-                    position: "absolute",
-                    bottom: "30px",
-                    left: "16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px"
-                }}>
+        <div style={{ position: "relative", width: "100vw", height: "100%", flex: "1" }}>
+            <div id="mapView" style={{ width: "100%", height: "100%" }}></div>
+
+            <div style={{ position: "absolute", bottom: "30px", left: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
                 {[4, 3, 2, 1].map(floor => {
                     const isActive = level === floor;
                     return (
@@ -168,6 +191,138 @@ const ArcGISMap = ({ geoDescriptions }) => {
                     );
                 })}
             </div>
+
+            {dialogVisible && (
+                <div style={{
+                    position: "absolute",
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: "rgba(0, 0, 0, 0.7)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: "white",
+                        padding: "30px",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                        textAlign: "center"
+                    }}>
+                        <p style={{ marginBottom: "20px", fontSize: "18px" }}>
+                            Are you sure the geo-description applies to this point?
+                        </p>
+                        <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+                            <button
+                                onClick={handleYesClick}
+                                style={{
+                                    padding: "10px 20px",
+                                    fontSize: "16px",
+                                    backgroundColor: "#FFD700",
+                                    color: "black",
+                                    border: "none",
+                                    borderRadius: "8px"
+                                }}>
+                                YES
+                            </button>
+                            <button
+                                onClick={handleNoClick}
+                                style={{
+                                    padding: "10px 20px",
+                                    fontSize: "16px",
+                                    backgroundColor: "black",
+                                    color: "#FFD700",
+                                    border: "none",
+                                    borderRadius: "8px"
+                                }}>
+                                NO
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showInvalidAnswerToast && (
+                <div style={{
+                    position: "absolute",
+                    bottom: "20px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    backgroundColor: "black",
+                    color: "red",
+                    padding: "12px 24px",
+                    borderRadius: "8px",
+                    fontSize: "18px",
+                    boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
+                    zIndex: 1100,
+                    transition: "opacity 0.3s ease-in-out"
+                }}>
+                    Keep trying
+                </div>
+            )}
+
+            {naturalnessDialogVisible && (
+                <div style={{
+                    position: "absolute",
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: "rgba(0, 0, 0, 0.7)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: "white",
+                        padding: "30px",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                        textAlign: "center"
+                    }}>
+                        <p style={{ marginBottom: "20px", fontSize: "18px" }}>
+                            ABC123
+                            <br />
+                            How do you rate the level of naturalness of the description on a scale from 1 to 10?
+                            <br />
+                            <span style={{ fontSize: "14px" }}>
+                                1 - The text was definitely computer generated.
+                                <br />
+                                10 - It is impossible to tell whether the text was computer or human generated.
+                            </span>
+                        </p>
+                        <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            step="1"
+                            value={naturalness || ""}
+                            onChange={(e) => {
+                                const newVal = parseInt(e.target.value, 10);
+                                setNaturalness(newVal);
+                            }}
+                            style={{
+                                width: "60px",
+                                fontSize: "18px",
+                                padding: "5px",
+                                textAlign: "center"
+                            }}
+                        />
+                        <div style={{ marginTop: "20px", display: "flex", justifyContent: "center" }}>
+                            <button
+                                onClick={handleRateNaturalness}
+                                style={{
+                                    padding: "10px 20px",
+                                    fontSize: "16px",
+                                    backgroundColor: "#FFD700",
+                                    color: "black",
+                                    border: "none",
+                                    borderRadius: "8px"
+                                }}>
+                                Rate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

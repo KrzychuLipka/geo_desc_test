@@ -3,14 +3,14 @@ import './App.css';
 import ArcGISMap from './ArcGISMap';
 import GeoDescPanel from './GeoDescPanel';
 import Loader from './Loader';
-import { generatedGeoDescriptions, fetchGeoDescriptions } from "./GeoDescRepo";
+import geoDescRepo from './GeoDescRepo';
 
 function App() {
   const [geoDescriptions, setGeoDescriptions] = useState([]);
 
   useEffect(() => {
     const loadGeoDescriptions = async () => {
-      const data = await fetchGeoDescriptions();
+      const data = await geoDescRepo.fetchGeoDescriptions();
       setGeoDescriptions(data);
     };
     loadGeoDescriptions();
@@ -27,8 +27,7 @@ function App() {
         dataLoaded ? <ArcGISMap geoDescriptions={geoDescriptions} /> : <Loader />
       }
       {
-        dataLoaded && generatedGeoDescriptions && generatedGeoDescriptions.length > 0 ?
-          <GeoDescPanel geoDescriptions={generatedGeoDescriptions} /> : null
+        <GeoDescPanel />
       }
     </div>
   );
