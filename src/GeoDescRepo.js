@@ -75,8 +75,11 @@ class GeoDescRepo {
         const currentActiveIndex = this
             .generatedGeoDescriptions
             .findIndex((desc) => desc.isActive);
-
-        if (currentActiveIndex >= 0 &&
+        this
+            .generatedGeoDescriptions
+            .find((desc) => desc.isActive)
+            .isActive = false;
+        if (currentActiveIndex > -1 &&
             currentActiveIndex < this.generatedGeoDescriptions.length - 1) {
             this.generatedGeoDescriptions[currentActiveIndex + 1].isActive = true;
         }

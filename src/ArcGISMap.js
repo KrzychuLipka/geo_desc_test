@@ -70,14 +70,14 @@ const ArcGISMap = ({ geoDescriptions }) => {
     }, []);
 
     // TODO remove after tests
-    useEffect(() => {
-        const handleGeoDescRepoUpdate = () => {
-            geoDescRepo.printTestResults();
-        };
+    // useEffect(() => {
+    //     const handleGeoDescRepoUpdate = () => {
+    //         geoDescRepo.printTestResults();
+    //     };
 
-        geoDescRepo.subscribe(handleGeoDescRepoUpdate);
-        handleGeoDescRepoUpdate();
-    }, []);
+    //     geoDescRepo.subscribe(handleGeoDescRepoUpdate);
+    //     handleGeoDescRepoUpdate();
+    // }, []);
 
     useEffect(() => {
         baseLayers.forEach((layer) => {
