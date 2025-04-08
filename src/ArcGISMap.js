@@ -69,15 +69,16 @@ const ArcGISMap = ({ geoDescriptions }) => {
         };
     }, []);
 
-    // TODO remove after tests
-    // useEffect(() => {
-    //     const handleGeoDescRepoUpdate = () => {
-    //         geoDescRepo.printTestResults();
-    //     };
+    useEffect(() => {
+        const handleGeoDescRepoUpdate = () => {
+            const activeGeoDesc = geoDescRepo.getActiveGeneratedGeoDescription();
+            setAccuracy(activeGeoDesc?.accuracy);
+            setNaturalness(activeGeoDesc?.naturalness);
+        };
 
-    //     geoDescRepo.subscribe(handleGeoDescRepoUpdate);
-    //     handleGeoDescRepoUpdate();
-    // }, []);
+        geoDescRepo.subscribe(handleGeoDescRepoUpdate);
+        handleGeoDescRepoUpdate();
+    }, []);
 
     useEffect(() => {
         baseLayers.forEach((layer) => {
@@ -92,6 +93,9 @@ const ArcGISMap = ({ geoDescriptions }) => {
 
     const setMapPointclickListener = (mapView, geoDescLayer) => {
         mapView.on("click", (event) => {
+            if (!geoDescRepo.getActiveGeneratedGeoDescription()) {
+                return;
+            }
             mapView.hitTest(event).then((response) => {
                 if (response.results.length) {
                     const result = response.results.find((result) => result.graphic && result.graphic.layer === geoDescLayer);
@@ -130,22 +134,14 @@ const ArcGISMap = ({ geoDescriptions }) => {
 
     const handleYesClick = () => {
         if (selectedGeoDescId === geoDescRepo.getActiveGeneratedGeoDescription()?.referenceDescId) {
-            setAccuracy(prev => {
-                const newVal = prev + 1;
-                geoDescRepo.updateAccuracy(newVal);
-                setDialogVisible(false);
-                setNaturalnessDialogVisible(true);
-                return newVal;
-            });
+            geoDescRepo.updateAccuracy(accuracy + 1);
+            setDialogVisible(false);
+            setNaturalnessDialogVisible(true);
         } else {
-            setAccuracy(prev => {
-                const newVal = prev - 1;
-                geoDescRepo.updateAccuracy(newVal);
-                console.log(`selectedGeoDescId=${selectedGeoDescId}`);
-                setShowInvalidAnswerToast(true);
-                setTimeout(() => setShowInvalidAnswerToast(false), 2000);
-                return newVal;
-            });
+            geoDescRepo.updateAccuracy(accuracy - 1);
+            console.log(`selectedGeoDescId=${selectedGeoDescId}`);
+            setShowInvalidAnswerToast(true);
+            setTimeout(() => setShowInvalidAnswerToast(false), 2000);
             setDialogVisible(false);
             setSelectedGeoDescId(null);
         }
@@ -157,13 +153,12 @@ const ArcGISMap = ({ geoDescriptions }) => {
     };
 
     const handleRateNaturalness = () => {
-        if (naturalness < 1 || naturalness > 10) {
+        if (!naturalness || (naturalness < 1 || naturalness > 10)) {
             alert("Please select a value between 1 and 10.");
             return;
         }
         geoDescRepo.updateNaturalness(naturalness);
         setNaturalnessDialogVisible(false);
-        setNaturalness(null);
     };
 
     return (
@@ -279,8 +274,8 @@ const ArcGISMap = ({ geoDescriptions }) => {
                         textAlign: "center"
                     }}>
                         <p style={{ marginBottom: "20px", fontSize: "18px" }}>
-                            ABC123
-                            <br />
+                            {geoDescRepo.getActiveGeneratedGeoDescription()?.description}
+                            <br /> <br />
                             How do you rate the level of naturalness of the description on a scale from 1 to 10?
                             <br />
                             <span style={{ fontSize: "14px" }}>

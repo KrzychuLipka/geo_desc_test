@@ -34,17 +34,6 @@ class GeoDescRepo {
             .find((desc) => desc.isActive) || null;
     }
 
-    printTestResults() {
-        this.generatedGeoDescriptions.forEach((desc) => {
-            console.log('***');
-            console.log(`description: ${desc.description}`);
-            console.log(`isActive: ${desc.isActive}`);
-            console.log(`model: ${desc.model}`);
-            console.log(`accuracy: ${desc.accuracy}`);
-            console.log(`naturalness: ${desc.naturalness}`);
-        });
-    }
-
     updateAccuracy(
         accuracy
     ) {
@@ -82,7 +71,20 @@ class GeoDescRepo {
         if (currentActiveIndex > -1 &&
             currentActiveIndex < this.generatedGeoDescriptions.length - 1) {
             this.generatedGeoDescriptions[currentActiveIndex + 1].isActive = true;
+        } else {
+            this.printTestResults();
         }
+    }
+
+    printTestResults() {
+        this.generatedGeoDescriptions.forEach((desc) => {
+            console.log('***');
+            console.log(`description: ${desc.description}`);
+            console.log(`isActive: ${desc.isActive}`);
+            console.log(`model: ${desc.model}`);
+            console.log(`accuracy: ${desc.accuracy}`);
+            console.log(`naturalness: ${desc.naturalness}`);
+        });
     }
 
     subscribe(
