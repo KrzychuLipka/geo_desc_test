@@ -1,3 +1,5 @@
+import log from './Logger';
+
 class GeoDescRepo {
 
     constructor() {
@@ -5,7 +7,6 @@ class GeoDescRepo {
             return GeoDescRepo.instance;
         }
 
-        // TODO Wykorzystać też inne modele (po 2 geoopisy w losowej kolejności - ekspert, model1, model2)
         this.generatedGeoDescriptions = [
             {
                 referenceDescId: 2078,
@@ -17,7 +18,39 @@ class GeoDescRepo {
             },
             {
                 referenceDescId: 2070,
-                description: "You are currently located on the first floor of a building. You can find yourself near the end of the southwest corridor.",
+                description: "You are at the end of the southwest corridor on the first floor.",
+                model: "human",
+                accuracy: 0,
+                naturalness: 1,
+                isActive: false,
+            },
+            {
+                referenceDescId: 2065,
+                description: "You are at the beginning of the north-eastern corridor, located on the first floor. The fire door providing access to this corridor is nearby.",
+                model: "mistral-7b-instruct-v0.3",
+                accuracy: 0,
+                naturalness: 1,
+                isActive: false,
+            },
+            {
+                referenceDescId: 2057,
+                description: "You are on the ground floor, specifically at the end of the northeastern corridor. Notably, you are next to the entrance to the conference room.",
+                model: "mistral-7b-instruct-v0.3",
+                accuracy: 0,
+                naturalness: 1,
+                isActive: false,
+            },
+            {
+                referenceDescId: 2063,
+                description: "You are in a small central hall on the first floor, close to the spiral staircase.",
+                model: "human",
+                accuracy: 0,
+                naturalness: 1,
+                isActive: false,
+            },
+            {
+                referenceDescId: 2050,
+                description: "You are currently located on the ground floor of a building. You are standing in a corridor before the entrance to the toilets. You are next to the building’s entrance hall.",
                 model: "deepseek-r1-distill-llama-8b",
                 accuracy: 0,
                 naturalness: 1,
@@ -78,12 +111,12 @@ class GeoDescRepo {
 
     printTestResults() {
         this.generatedGeoDescriptions.forEach((desc) => {
-            console.log('***');
-            console.log(`description: ${desc.description}`);
-            console.log(`isActive: ${desc.isActive}`);
-            console.log(`model: ${desc.model}`);
-            console.log(`accuracy: ${desc.accuracy}`);
-            console.log(`naturalness: ${desc.naturalness}`);
+            log('***');
+            log(`description: ${desc.description}`);
+            log(`isActive: ${desc.isActive}`);
+            log(`model: ${desc.model}`);
+            log(`accuracy: ${desc.accuracy}`);
+            log(`naturalness: ${desc.naturalness}`);
         });
     }
 
@@ -113,7 +146,7 @@ class GeoDescRepo {
                 y: geometry.y,
             }));
         } catch (error) {
-            console.error("Fetch error:", error);
+            log("Fetch error:", error);
             return [];
         }
     };

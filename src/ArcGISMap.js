@@ -8,6 +8,7 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Graphic from "@arcgis/core/Graphic";
 import proj4 from "proj4";
 import geoDescRepo from './GeoDescRepo';
+import log from './Logger';
 
 const epsg4326 = "EPSG:4326";
 const epsg2180 = "EPSG:2180";
@@ -40,6 +41,8 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const [naturalness, setNaturalness] = useState(null);
 
     const geoDescLayerRef = useRef(null);
+    const initialGeoDescriptionsRef = useRef(geoDescriptions);
+    const initialLevelRef = useRef(level);
 
     esriConfig.apiKey = apiKey;
     proj4.defs(epsg4326, "+proj=longlat +datum=WGS84 +no_defs +type=crs");
@@ -61,7 +64,11 @@ const ArcGISMap = ({ geoDescriptions }) => {
         geoDescLayerRef.current = geoDescLayer;
         map.add(geoDescLayer);
 
-        updateGeoDescriptionsLayer(geoDescLayer, geoDescriptions, level);
+        updateGeoDescriptionsLayer(
+            geoDescLayer, 
+            initialGeoDescriptionsRef.current, 
+            initialLevelRef.current
+        );
         setMapPointclickListener(mapView, geoDescLayer);
 
         return () => {
@@ -139,7 +146,7 @@ const ArcGISMap = ({ geoDescriptions }) => {
             setNaturalnessDialogVisible(true);
         } else {
             geoDescRepo.updateAccuracy(accuracy - 1);
-            console.log(`selectedGeoDescId=${selectedGeoDescId}`);
+            log(`selectedGeoDescId=${selectedGeoDescId}`);
             setShowInvalidAnswerToast(true);
             setTimeout(() => setShowInvalidAnswerToast(false), 2000);
             setDialogVisible(false);
