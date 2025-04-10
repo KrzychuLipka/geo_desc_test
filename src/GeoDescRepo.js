@@ -7,6 +7,7 @@ class GeoDescRepo {
             return GeoDescRepo.instance;
         }
 
+        this.gender = "";
         this.generatedGeoDescriptions = [
             {
                 referenceDescId: 2078,
@@ -77,6 +78,13 @@ class GeoDescRepo {
             activeGeoDesc.accuracy = accuracy;
             this.notifySubscribers();
         }
+    }
+
+    saveGender(
+        gender
+    ) {
+        this.gender = gender;
+        this.notifySubscribers();
     }
 
     updateNaturalness(

@@ -35,6 +35,7 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const [baseLayers, setBaseLayers] = useState([]);
     const [dialogVisible, setDialogVisible] = useState(false);
     const [naturalnessDialogVisible, setNaturalnessDialogVisible] = useState(false);
+    const [sexDialogVisible, setSexDialogVisible] = useState(geoDescRepo.gender.length === 0);
     const [selectedGeoDescId, setSelectedGeoDescId] = useState(null);
     const [showInvalidAnswerToast, setShowInvalidAnswerToast] = useState(false);
     const [accuracy, setAccuracy] = useState(0);
@@ -65,8 +66,8 @@ const ArcGISMap = ({ geoDescriptions }) => {
         map.add(geoDescLayer);
 
         updateGeoDescriptionsLayer(
-            geoDescLayer, 
-            initialGeoDescriptionsRef.current, 
+            geoDescLayer,
+            initialGeoDescriptionsRef.current,
             initialLevelRef.current
         );
         setMapPointclickListener(mapView, geoDescLayer);
@@ -166,6 +167,11 @@ const ArcGISMap = ({ geoDescriptions }) => {
         }
         geoDescRepo.updateNaturalness(naturalness);
         setNaturalnessDialogVisible(false);
+    };
+
+    const handleGenderSelection = (gender) => {
+        geoDescRepo.saveGender(gender);
+        setSexDialogVisible(false);
     };
 
     return (
@@ -320,6 +326,56 @@ const ArcGISMap = ({ geoDescriptions }) => {
                                     borderRadius: "8px"
                                 }}>
                                 Rate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {sexDialogVisible && (
+                <div style={{
+                    position: "absolute",
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: "rgba(0, 0, 0, 0.7)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: "white",
+                        padding: "30px",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                        textAlign: "center"
+                    }}>
+                        <p style={{ marginBottom: "20px", fontSize: "18px" }}>
+                            Indicate your gender
+                        </p>
+                        <div style={{ marginTop: "20px", display: "flex", justifyContent: "center" }}>
+                            <button
+                                onClick={() => handleGenderSelection('F')}
+                                style={{
+                                    padding: "10px 20px",
+                                    fontSize: "16px",
+                                    backgroundColor: "#FFD700",
+                                    color: "black",
+                                    border: "none",
+                                    borderRadius: "8px",
+                                    marginRight: "10px"
+                                }}>
+                                Female
+                            </button>
+                            <button
+                                onClick={() => handleGenderSelection('M')}
+                                style={{
+                                    padding: "10px 20px",
+                                    fontSize: "16px",
+                                    backgroundColor: "#FFD700",
+                                    color: "black",
+                                    border: "none",
+                                    borderRadius: "8px"
+                                }}>
+                                Male
                             </button>
                         </div>
                     </div>
