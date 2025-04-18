@@ -1,4 +1,6 @@
 import log from './Logger';
+import { collection, addDoc, getDocs } from "firebase/firestore";
+import { db } from './FirebaseConfig';
 
 class GeoDescRepo {
 
@@ -6,6 +8,8 @@ class GeoDescRepo {
         if (GeoDescRepo.instance) {
             return GeoDescRepo.instance;
         }
+
+        this.printTestResults();
 
         this.gender = "";
         this.generatedGeoDescriptions = [
@@ -113,19 +117,41 @@ class GeoDescRepo {
             currentActiveIndex < this.generatedGeoDescriptions.length - 1) {
             this.generatedGeoDescriptions[currentActiveIndex + 1].isActive = true;
         } else {
-            this.printTestResults();
+            this.saveTestResults();
         }
     }
 
-    printTestResults() {
-        this.generatedGeoDescriptions.forEach((desc) => {
-            log('***');
-            log(`description: ${desc.description}`);
-            log(`isActive: ${desc.isActive}`);
-            log(`model: ${desc.model}`);
-            log(`accuracy: ${desc.accuracy}`);
-            log(`naturalness: ${desc.naturalness}`);
-        });
+    saveTestResults = async () => {
+        try {
+            const docRef = await addDoc(collection(db, "testResults"), {
+                gender: this.gender,
+                results: this.generatedGeoDescriptions.map((geoDesc) => {
+                    return {
+                        referenceDescId: geoDesc.referenceDescId,
+                        accuracy: geoDesc.accuracy,
+                        naturalness: geoDesc.naturalness,
+                    };
+                })
+            });
+            console.log("Document written with ID: ", docRef.id);
+        } catch (e) {
+            console.error("Error adding document: ", e);
+        }
+    }
+
+    printTestResults = async () => {
+        const querySnapshot = await getDocs(collection(db, "testResults"));
+        const testResults = querySnapshot
+            .docs
+            .map(doc => ({ id: doc.id, ...doc.data() }));
+        for (var i = 0; i < testResults.length; i++) {
+            const geoDesc = testResults[i];
+            console.log(geoDesc.timestamp);
+            console.log(geoDesc.description);
+            console.log(geoDesc.model);
+            console.log(geoDesc.accuracy);
+            console.log(geoDesc.naturalness);
+        }
     }
 
     subscribe(
