@@ -128,25 +128,54 @@ def calculate_bleu(reference, candidate):
     reference_tokens = reference.split()
     candidate_tokens = candidate.split()
     return sentence_bleu([reference_tokens], candidate_tokens)
+
+def plot_similarity_stats(source):
+    cos_similarities = []
+    bleu_scores = []
+
+    for desc in geo_descriptions:
+        if desc['source'] == source:
+            cos_sim = calculate_cosine_similarity(desc['expert_desc'], desc['generated_desc'])
+            bleu = calculate_bleu(desc['expert_desc'], desc['generated_desc'])
+            cos_similarities.append(cos_sim)
+            bleu_scores.append(bleu)
+
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
     
-print(f"*** User test statistics: ***\n\nNumber of tests in the women's group: {num_women_tests}")
-print(f"Number of tests in the men's group: {num_man_tests}")
+    sns.boxplot(y=cos_similarities, ax=ax[0], color='skyblue')
+    mean_cos = np.mean(cos_similarities)
+    ax[0].set_title(f'Cosine Similarity - {source}')
+    ax[0].set_ylabel("Similarity")
+    ax[0].annotate(f'Mean: {mean_cos:.2f}', 
+                   xy=(0, mean_cos), 
+                   xytext=(0.1, mean_cos + 0.02), 
+                   textcoords='data',
+                   arrowprops=dict(arrowstyle='->', color='black'),
+                   fontsize=10)
 
-print("  DeepSeek - Male:")
-print("   ", filter_and_format_stats(user_test_statistics['deepseek_M']))
-print("  DeepSeek - Female:")
-print("   ", filter_and_format_stats(user_test_statistics['deepseek_F']))
-print("  Mistral - Male:")
-print("   ", filter_and_format_stats(user_test_statistics['mistral_M']))
-print("  Mistral - Female:")
-print("   ", filter_and_format_stats(user_test_statistics['mistral_F']))    
+    sns.boxplot(y=bleu_scores, ax=ax[1], color='lightgreen')
+    mean_bleu = np.mean(bleu_scores)
+    ax[1].set_title(f'BLEU Score - {source}')
+    ax[1].set_ylabel("Score")
+    ax[1].annotate(f'Mean: {mean_bleu:.2f}', 
+                   xy=(0, mean_bleu), 
+                   xytext=(0.1, mean_bleu + 0.02), 
+                   textcoords='data',
+                   arrowprops=dict(arrowstyle='->', color='black'),
+                   fontsize=10)
 
+    plt.tight_layout()
+    plt.show()
 
-def plot_user_test_statistics(stats_dict):
-    categories = ['avg_accuracy', 'avg_accuracy_0_1', 'avg_naturalness']
+def plot_user_test_statistics(title, categories):
     data = []
     labels = []
-    
+    stats_dict = {
+        'DeepSeek_M': filter_and_format_stats(user_test_statistics['deepseek_M']),
+        'DeepSeek_F': filter_and_format_stats(user_test_statistics['deepseek_F']),
+        'Mistral_M': filter_and_format_stats(user_test_statistics['mistral_M']),
+        'Mistral_F': filter_and_format_stats(user_test_statistics['mistral_F'])
+    }
     for key, stats in stats_dict.items():
         for cat in categories:
             data.append(stats[cat])
@@ -164,41 +193,65 @@ def plot_user_test_statistics(stats_dict):
     df = pd.DataFrame(df)
     plt.figure(figsize=(12, 6))
     sns.barplot(data=df, x="Metric", y="Value", hue="Model_Gender")
-    plt.title("Average user test results")
+    plt.title(title)
     plt.legend(title="Model + Gender")
     plt.tight_layout()
     plt.show()
 
+def plot_user_test_statistics(title, categories):
+    data = []
+    labels = []
+    stats_dict = {
+        'DeepSeek_M': filter_and_format_stats(user_test_statistics['deepseek_M']),
+        'DeepSeek_F': filter_and_format_stats(user_test_statistics['deepseek_F']),
+        'Mistral_M': filter_and_format_stats(user_test_statistics['mistral_M']),
+        'Mistral_F': filter_and_format_stats(user_test_statistics['mistral_F'])
+    }
 
-def plot_similarity_stats(source):
-    cos_similarities = []
-    bleu_scores = []
+    for key, stats in stats_dict.items():
+        for cat in categories:
+            data.append(stats[cat])
+            labels.append((key, cat))
 
-    for desc in geo_descriptions:
-        if desc['source'] == source:
-            cos_sim = calculate_cosine_similarity(desc['expert_desc'], desc['generated_desc'])
-            bleu = calculate_bleu(desc['expert_desc'], desc['generated_desc'])
-            cos_similarities.append(cos_sim)
-            bleu_scores.append(bleu)
+    df = pd.DataFrame({
+        'Model_Gender': [label[0] for label in labels],
+        'Metric': [label[1] for label in labels],
+        'Value': data
+    })
 
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.boxplot(y=cos_similarities, ax=ax[0], color='skyblue')
-    ax[0].set_title(f'Cosine Similarity - {source}')
-    ax[0].set_ylabel("Similarity")
+    plt.figure(figsize=(12, 6))
+    ax = sns.barplot(data=df, x="Metric", y="Value", hue="Model_Gender")
 
-    sns.boxplot(y=bleu_scores, ax=ax[1], color='lightgreen')
-    ax[1].set_title(f'BLEU Score - {source}')
-    ax[1].set_ylabel("Score")
+    # for p in ax.patches:
+    #     height = p.get_height()
+    #     ax.annotate(f'{height:.2f}',
+    #                 (p.get_x() + p.get_width() / 2., height),
+    #                 ha='center', va='bottom',
+    #                 fontsize=9, color='black', xytext=(0, 5),
+    #                 textcoords='offset points')
 
+    plt.title(title)
+    plt.legend(title="Model + Gender")
     plt.tight_layout()
     plt.show()
 
-plot_user_test_statistics({
-    'DeepSeek_M': filter_and_format_stats(user_test_statistics['deepseek_M']),
-    'DeepSeek_F': filter_and_format_stats(user_test_statistics['deepseek_F']),
-    'Mistral_M': filter_and_format_stats(user_test_statistics['mistral_M']),
-    'Mistral_F': filter_and_format_stats(user_test_statistics['mistral_F']),
-})
+naturalness_stats_categories = [
+    'avg_naturalness', 
+    'median_naturalness', 
+    'std_naturalness'
+]
+
+accuracy_stats_categories = [
+    'avg_accuracy', 
+    'avg_accuracy_0_1', 
+    'median_accuracy', 
+    'median_accuracy_0_1', 
+    'std_accuracy', 
+    'std_accuracy_0_1'
+]
+
+plot_user_test_statistics("Accuracy test results", accuracy_stats_categories)
+plot_user_test_statistics("Naturalness test results", naturalness_stats_categories)
 
 plot_similarity_stats("deepseek-r1-distill-llama-8b")
 plot_similarity_stats("mistral-7b-instruct-v0.3")
