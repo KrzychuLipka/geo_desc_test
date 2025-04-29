@@ -230,7 +230,7 @@ def plot_user_test_statistics(title, categories):
     #                 fontsize=9, color='black', xytext=(0, 5),
     #                 textcoords='offset points')
 
-    plt.title(title)
+    plt.title(f"{title} ({num_women_tests} women and {num_man_tests} men)")
     plt.legend(title="Model + Gender")
     plt.tight_layout()
     plt.show()
