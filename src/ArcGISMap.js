@@ -5,6 +5,7 @@ import MapView from "@arcgis/core/views/MapView";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import esriConfig from "@arcgis/core/config";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import Compass from "@arcgis/core/widgets/Compass";
 import Graphic from "@arcgis/core/Graphic";
 import proj4 from "proj4";
 import geoDescRepo from './GeoDescRepo';
@@ -57,6 +58,8 @@ const ArcGISMap = ({ geoDescriptions }) => {
             center: [initialLng, initialLat],
             zoom: initialZoom,
         });
+        const compass = new Compass({ view: mapView });
+        mapView.ui.add(compass, "top-right");
 
         const baseLayers = addBaseLayers(map);
         setBaseLayers(baseLayers);
