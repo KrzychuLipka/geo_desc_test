@@ -68,9 +68,18 @@ class GeoDescRepo {
     }
 
     getActiveGeneratedGeoDescription() {
-        return this.generatedGeoDescriptions
+        return this
+            .generatedGeoDescriptions
             .find((desc) => desc.isActive) || null;
     }
+
+    getActiveTaskNumber() {
+        const index = this
+            .generatedGeoDescriptions
+            .findIndex(desc => desc.isActive);
+        return index !== -1 ? index + 1 : 1;
+    }
+
 
     updateAccuracy(
         accuracy
