@@ -386,15 +386,18 @@ const ArcGISMap = ({ geoDescriptions }) => {
 };
 
 const addBaseLayers = (map) => {
-    const mapServerUrl = "https://arcgis.cenagis.edu.pl/server/rest/services/SION2_Topo_MV/sion2_topo_indoor_all/MapServer/";
+    const poiLayersUrl = "https://arcgis.cenagis.edu.pl/server/rest/services/SION2_Topo_MV/sion_topo_POI_style_EN/FeatureServer/";
+    const indoorLayersUrl = "https://arcgis.cenagis.edu.pl/server/rest/services/SION2_Topo_MV/sion2_topo_indoor_all/MapServer/";
     const layerUrls = [
-        `${mapServerUrl}6`,
-        `${mapServerUrl}5`,
-        `${mapServerUrl}4`,
-        `${mapServerUrl}3`,
-        `${mapServerUrl}2`,
-        `${mapServerUrl}1`,
-        `${mapServerUrl}0`
+        `${indoorLayersUrl}6`,
+        `${indoorLayersUrl}5`,
+        `${indoorLayersUrl}4`,
+        `${indoorLayersUrl}3`,
+        `${indoorLayersUrl}2`,
+        `${indoorLayersUrl}1`,
+        `${indoorLayersUrl}0`,
+        `${poiLayersUrl}28`,
+        `${poiLayersUrl}24`
     ];
     return layerUrls.map((url) => {
         const featureLayer = new FeatureLayer({ url });
