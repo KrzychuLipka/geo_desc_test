@@ -1,0 +1,34 @@
+***
+BLEU (Bilingual Evaluation Understudy) to metryka u¿ywana do oceny jakoœci wygenerowanych tekstów, takich jak t³umaczenia maszynowe. Porównuje ona wygenerowany tekst z referencyjnym tekstem, analizuj¹c wspólne ci¹gi s³ów (n-gramy). BLEU sprawdza, jak dobrze wygenerowany tekst pasuje do referencyjnego, uwzglêdniaj¹c zarówno dok³adnoœæ, jak i d³ugoœæ tekstu.
+***
+
+
+
+**
+Matematyczne wyjaœnienie dzia³ania BLEU:
+** 
+
+BLEU opiera siê na porównaniu n-gramów w wygenerowanym tekœcie z n-gramami w referencyjnych tekstach. Oto kroki obliczania BLEU:
+
+Precision (precyzja): Oblicza siê precyzjê dla ka¿dego n-gramu, czyli stosunek liczby n-gramów w wygenerowanym tekœcie, które wystêpuj¹ w referencyjnych tekstach, do ca³kowitej liczby n-gramów w wygenerowanym tekœcie.
+
+Clipped Precision (przyciêta precyzja): Aby unikn¹æ nadmiernego faworyzowania powtarzaj¹cych siê n-gramów, liczba wyst¹pieñ ka¿dego n-gramu w wygenerowanym tekœcie jest ograniczona do maksymalnej liczby wyst¹pieñ tego n-gramu w referencyjnych tekstach.
+
+Geometric Mean (œrednia geometryczna): BLEU oblicza œredni¹ geometryczn¹ precyzji dla ró¿nych d³ugoœci n-gramów (np. unigramy, bigramy, trigramy).
+
+Brevity Penalty (kara za zwiêz³oœæ): Jeœli wygenerowany tekst jest krótszy ni¿ referencyjny tekst, stosuje siê karê za zwiêz³oœæ, która zmniejsza wynik BLEU.
+
+
+
+
+**
+Uzasadnienie u¿ycia metryki BLEU:
+**
+
+1. Bardziej holistyczna ocena wygenerowanych geo-opisów
+
+2. Szerokie zastosowanie. BLEU jest powszechnie stosowan¹ metryk¹ w przetwarzaniu jêzyka naturalnego (NLP), szczególnie w ocenie systemów t³umaczenia maszynowego i generowania jêzyka naturalnego.
+
+3. Uwzglêdnienie formy tekstu. BLEU porównuje wspólne n-gramy (ci¹gi n s³ów) w porównywanych tekstach, co pozwala na ocenê podobieñstwa na poziomie sk³adniowym.
+
+4. D³ugoœæ tekstu. BLEU uwzglêdnia d³ugoœæ wygenerowanego tekstu. Sstosowane s¹ kary za zbyt krótkie/d³ugie teksty, co zapobiega faworyzowaniu zbyt krótkich lub zbyt d³ugich opisów.
