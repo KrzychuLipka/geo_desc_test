@@ -12,13 +12,14 @@ class GeoDescRepo {
         this.printTestResults();
 
         this.gender = "";
+        this.age = 0;
         this.generatedGeoDescriptions = [
             {
                 referenceDescId: 2078,
                 description: "You are currently located in the basement level of a spacious laboratory room. There are two columns in the middle of the room, and you are next to a double roller gate. Behind the gate is an exit ramp for vehicles.",
                 model: "deepseek-r1-distill-llama-8b",
                 accuracy: 0,
-                naturalness: 1,
+                naturalness: 3,
                 isActive: true,
             },
             {
@@ -26,7 +27,7 @@ class GeoDescRepo {
                 description: "You are at the end of the southwest corridor on the first floor.",
                 model: "human",
                 accuracy: 0,
-                naturalness: 1,
+                naturalness: 3,
                 isActive: false,
             },
             {
@@ -34,7 +35,7 @@ class GeoDescRepo {
                 description: "You are at the beginning of the north-eastern corridor, located on the first floor. The fire door providing access to this corridor is nearby.",
                 model: "mistral-7b-instruct-v0.3",
                 accuracy: 0,
-                naturalness: 1,
+                naturalness: 3,
                 isActive: false,
             },
             {
@@ -42,7 +43,7 @@ class GeoDescRepo {
                 description: "You are on the ground floor, specifically at the end of the northeastern corridor. Notably, you are next to the entrance to the conference room.",
                 model: "mistral-7b-instruct-v0.3",
                 accuracy: 0,
-                naturalness: 1,
+                naturalness: 3,
                 isActive: false,
             },
             {
@@ -50,7 +51,7 @@ class GeoDescRepo {
                 description: "You are in a small central hall on the first floor, close to the spiral staircase.",
                 model: "human",
                 accuracy: 0,
-                naturalness: 1,
+                naturalness: 3,
                 isActive: false,
             },
             {
@@ -58,7 +59,7 @@ class GeoDescRepo {
                 description: "You are currently located on the ground floor of a building. You are standing in a corridor before the entrance to the toilets. You are next to the building’s entrance hall.",
                 model: "deepseek-r1-distill-llama-8b",
                 accuracy: 0,
-                naturalness: 1,
+                naturalness: 3,
                 isActive: false,
             }
         ];
@@ -100,6 +101,13 @@ class GeoDescRepo {
         this.notifySubscribers();
     }
 
+    saveAge(
+        age
+    ) {
+        this.age = age;
+        this.notifySubscribers();
+    }
+
     updateNaturalness(
         naturalness
     ) {
@@ -134,6 +142,7 @@ class GeoDescRepo {
         try {
             const docRef = await addDoc(collection(db, "testResults"), {
                 gender: this.gender,
+                age: this.age,
                 results: this.generatedGeoDescriptions.map((geoDesc) => {
                     return {
                         referenceDescId: geoDesc.referenceDescId,

@@ -10,6 +10,11 @@ import Graphic from "@arcgis/core/Graphic";
 import proj4 from "proj4";
 import geoDescRepo from './GeoDescRepo';
 import log from './Logger';
+import GeoDescConfirmationDialog from './GeoDescConfirmationDialog';
+import InvalidAnswerToast from './InvalidAnswerToast';
+import NaturalnessLevelDialog from './NaturalnessLevelDialog';
+import SexSelectionDialog from './SexSelectionDialog';
+import AgeSelectionDialog from "./AgeSelectionDialog";
 
 const epsg4326 = "EPSG:4326";
 const epsg2180 = "EPSG:2180";
@@ -31,16 +36,22 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const initialZoom = 20;
     const buildingId = 199;
     const defaultLevel = 3;
+    const minAge = 17;
+    const maxAge = 99;
+    const minNaturalness = 1;
+    const maxNaturalness = 3;
 
     const [level, setLevel] = useState(defaultLevel);
     const [baseLayers, setBaseLayers] = useState([]);
-    const [dialogVisible, setDialogVisible] = useState(false);
+    const [geoDescConfirmationDialogVisible, setGeoDescConfirmationDialogVisible] = useState(false);
     const [naturalnessDialogVisible, setNaturalnessDialogVisible] = useState(false);
-    const [sexDialogVisible, setSexDialogVisible] = useState(geoDescRepo.gender.length === 0);
+    const [sexDialogVisible, setSexDialogVisible] = useState(true);
+    const [ageDialogVisible, setAgeDialogVisible] = useState(false);
+    const [age, setAge] = useState(20);
     const [selectedGeoDescId, setSelectedGeoDescId] = useState(null);
     const [showInvalidAnswerToast, setShowInvalidAnswerToast] = useState(false);
     const [accuracy, setAccuracy] = useState(0);
-    const [naturalness, setNaturalness] = useState(null);
+    const [naturalness, setNaturalness] = useState(maxNaturalness);
 
     const geoDescLayerRef = useRef(null);
     const initialGeoDescriptionsRef = useRef(geoDescriptions);
@@ -113,7 +124,7 @@ const ArcGISMap = ({ geoDescriptions }) => {
                     if (result) {
                         const id = result.graphic.attributes.id;
                         setSelectedGeoDescId(id);
-                        setDialogVisible(true);
+                        setGeoDescConfirmationDialogVisible(true);
                     }
                 }
             });
@@ -146,26 +157,25 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const handleYesClick = () => {
         if (selectedGeoDescId === geoDescRepo.getActiveGeneratedGeoDescription()?.referenceDescId) {
             geoDescRepo.updateAccuracy(accuracy + 1);
-            setDialogVisible(false);
+            setGeoDescConfirmationDialogVisible(false);
             setNaturalnessDialogVisible(true);
         } else {
             geoDescRepo.updateAccuracy(accuracy - 1);
             log(`selectedGeoDescId=${selectedGeoDescId}`);
             setShowInvalidAnswerToast(true);
             setTimeout(() => setShowInvalidAnswerToast(false), 2000);
-            setDialogVisible(false);
+            setGeoDescConfirmationDialogVisible(false);
             setSelectedGeoDescId(null);
         }
     };
 
     const handleNoClick = () => {
-        setDialogVisible(false);
+        setGeoDescConfirmationDialogVisible(false);
         setSelectedGeoDescId(null);
     };
 
     const handleRateNaturalness = () => {
-        if (!naturalness || (naturalness < 1 || naturalness > 3)) {
-            alert("Please select a value between 1 and 3.");
+        if (!naturalness || (naturalness < minNaturalness || naturalness > maxNaturalness)) {
             return;
         }
         geoDescRepo.updateNaturalness(naturalness);
@@ -175,6 +185,15 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const handleGenderSelection = (gender) => {
         geoDescRepo.saveGender(gender);
         setSexDialogVisible(false);
+        setAgeDialogVisible(true);
+    };
+
+    const handleAgeChange = () => {
+        if (!age || (age < minAge || age > maxAge)) {
+            return;
+        }
+        geoDescRepo.saveAge(age);
+        setAgeDialogVisible(false);
     };
 
     return (
@@ -203,188 +222,40 @@ const ArcGISMap = ({ geoDescriptions }) => {
                 })}
             </div>
 
-            {dialogVisible && (
-                <div style={{
-                    position: "absolute",
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: "rgba(0, 0, 0, 0.7)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 1000
-                }}>
-                    <div style={{
-                        backgroundColor: "white",
-                        padding: "30px",
-                        borderRadius: "12px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                        textAlign: "center"
-                    }}>
-                        <p style={{ marginBottom: "20px", fontSize: "18px" }}>
-                            Are you sure the geo-description applies to this point?
-                        </p>
-                        <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
-                            <button
-                                onClick={handleYesClick}
-                                style={{
-                                    padding: "10px 20px",
-                                    fontSize: "16px",
-                                    backgroundColor: "#FFD700",
-                                    color: "black",
-                                    border: "none",
-                                    borderRadius: "8px"
-                                }}>
-                                YES
-                            </button>
-                            <button
-                                onClick={handleNoClick}
-                                style={{
-                                    padding: "10px 20px",
-                                    fontSize: "16px",
-                                    backgroundColor: "black",
-                                    color: "#FFD700",
-                                    border: "none",
-                                    borderRadius: "8px"
-                                }}>
-                                NO
-                            </button>
-                        </div>
-                    </div>
-                </div>
+
+            {geoDescConfirmationDialogVisible && (
+                <GeoDescConfirmationDialog
+                    handleYesClick={handleYesClick}
+                    handleNoClick={handleNoClick}
+                />
             )}
 
             {showInvalidAnswerToast && (
-                <div style={{
-                    position: "absolute",
-                    bottom: "50%",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    backgroundColor: "black",
-                    color: "#FFD700",
-                    padding: "12px 24px",
-                    borderRadius: "8px",
-                    fontSize: "22px",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
-                    zIndex: 1100,
-                    transition: "opacity 0.3s ease-in-out"
-                }}>
-                    <p style={{fontWeight: "bold"}}>Keep trying</p>
-                </div>
+                <InvalidAnswerToast />
             )}
 
             {naturalnessDialogVisible && (
-                <div style={{
-                    position: "absolute",
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: "rgba(0, 0, 0, 0.7)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 1000
-                }}>
-                    <div style={{
-                        backgroundColor: "white",
-                        padding: "30px",
-                        borderRadius: "12px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                        textAlign: "center"
-                    }}>
-                        <p style={{ marginBottom: "20px", fontSize: "18px" }}>
-                            {geoDescRepo.getActiveGeneratedGeoDescription()?.description}
-                            <br /> <br />
-                            How do you rate the level of naturalness of the description on a scale from 1 to 3?
-                            <br />
-                            <span style={{ fontSize: "14px" }}>
-                                1 - The text was definitely computer generated
-                                <br />
-                                2 - It's hard to tell
-                                <br />
-                                3 - It is impossible to tell whether the text was computer or human generated
-                            </span>
-                        </p>
-                        <input
-                            type="number"
-                            min="1"
-                            max="3"
-                            step="1"
-                            value={naturalness || ""}
-                            onChange={(e) => {
-                                const newVal = parseInt(e.target.value, 3);
-                                setNaturalness(newVal);
-                            }}
-                            style={{
-                                width: "60px",
-                                fontSize: "18px",
-                                padding: "5px",
-                                textAlign: "center"
-                            }}
-                        />
-                        <div style={{ marginTop: "20px", display: "flex", justifyContent: "center" }}>
-                            <button
-                                onClick={handleRateNaturalness}
-                                style={{
-                                    padding: "10px 20px",
-                                    fontSize: "16px",
-                                    backgroundColor: "#FFD700",
-                                    color: "black",
-                                    border: "none",
-                                    borderRadius: "8px"
-                                }}>
-                                Rate
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <NaturalnessLevelDialog
+                    minNaturalness={minNaturalness}
+                    maxNaturalness={maxNaturalness}
+                    naturalness={naturalness}
+                    setNaturalness={setNaturalness}
+                    handleRateNaturalness={handleRateNaturalness}
+                />
             )}
+
             {sexDialogVisible && (
-                <div style={{
-                    position: "absolute",
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: "rgba(0, 0, 0, 0.7)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 1000
-                }}>
-                    <div style={{
-                        backgroundColor: "white",
-                        padding: "30px",
-                        borderRadius: "12px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                        textAlign: "center"
-                    }}>
-                        <p style={{ marginBottom: "20px", fontSize: "18px" }}>
-                            Indicate your gender
-                        </p>
-                        <div style={{ marginTop: "20px", display: "flex", justifyContent: "center" }}>
-                            <button
-                                onClick={() => handleGenderSelection('F')}
-                                style={{
-                                    padding: "10px 20px",
-                                    fontSize: "16px",
-                                    backgroundColor: "#FFD700",
-                                    color: "black",
-                                    border: "none",
-                                    borderRadius: "8px",
-                                    marginRight: "10px"
-                                }}>
-                                Female
-                            </button>
-                            <button
-                                onClick={() => handleGenderSelection('M')}
-                                style={{
-                                    padding: "10px 20px",
-                                    fontSize: "16px",
-                                    backgroundColor: "#FFD700",
-                                    color: "black",
-                                    border: "none",
-                                    borderRadius: "8px"
-                                }}>
-                                Male
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <SexSelectionDialog
+                    handleGenderSelection={handleGenderSelection} />
+            )}
+
+            {ageDialogVisible && (
+                <AgeSelectionDialog
+                    minAge={minAge}
+                    maxAge={maxAge}
+                    age={age}
+                    setAge={setAge}
+                    handleAgeChange={handleAgeChange} />
             )}
         </div>
     );
