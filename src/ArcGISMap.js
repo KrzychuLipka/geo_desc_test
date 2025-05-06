@@ -164,8 +164,8 @@ const ArcGISMap = ({ geoDescriptions }) => {
     };
 
     const handleRateNaturalness = () => {
-        if (!naturalness || (naturalness < 1 || naturalness > 10)) {
-            alert("Please select a value between 1 and 10.");
+        if (!naturalness || (naturalness < 1 || naturalness > 3)) {
+            alert("Please select a value between 1 and 3.");
             return;
         }
         geoDescRepo.updateNaturalness(naturalness);
@@ -292,22 +292,24 @@ const ArcGISMap = ({ geoDescriptions }) => {
                         <p style={{ marginBottom: "20px", fontSize: "18px" }}>
                             {geoDescRepo.getActiveGeneratedGeoDescription()?.description}
                             <br /> <br />
-                            How do you rate the level of naturalness of the description on a scale from 1 to 10?
+                            How do you rate the level of naturalness of the description on a scale from 1 to 3?
                             <br />
                             <span style={{ fontSize: "14px" }}>
-                                1 - The text was definitely computer generated.
+                                1 - The text was definitely computer generated
                                 <br />
-                                10 - It is impossible to tell whether the text was computer or human generated.
+                                2 - It's hard to tell
+                                <br />
+                                3 - It is impossible to tell whether the text was computer or human generated
                             </span>
                         </p>
                         <input
                             type="number"
                             min="1"
-                            max="10"
+                            max="3"
                             step="1"
                             value={naturalness || ""}
                             onChange={(e) => {
-                                const newVal = parseInt(e.target.value, 10);
+                                const newVal = parseInt(e.target.value, 3);
                                 setNaturalness(newVal);
                             }}
                             style={{
