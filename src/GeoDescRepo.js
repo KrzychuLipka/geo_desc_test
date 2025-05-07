@@ -13,6 +13,7 @@ class GeoDescRepo {
 
         this.gender = "";
         this.age = 0;
+        this.spatialOrientationLevel = 0;
         this.generatedGeoDescriptions = [
             {
                 referenceDescId: 2078,
@@ -108,6 +109,13 @@ class GeoDescRepo {
         this.notifySubscribers();
     }
 
+    saveSpatialOrientationLevel(
+        level
+    ) {
+        this.spatialOrientationLevel = level;
+        this.notifySubscribers();
+    }
+
     updateNaturalness(
         naturalness
     ) {
@@ -143,6 +151,7 @@ class GeoDescRepo {
             const docRef = await addDoc(collection(db, "testResults"), {
                 gender: this.gender,
                 age: this.age,
+                spatialOrientationLevel: this.spatialOrientationLevel,
                 results: this.generatedGeoDescriptions.map((geoDesc) => {
                     return {
                         referenceDescId: geoDesc.referenceDescId,

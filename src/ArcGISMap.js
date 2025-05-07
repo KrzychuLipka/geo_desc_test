@@ -15,6 +15,7 @@ import InvalidAnswerToast from './InvalidAnswerToast';
 import NaturalnessLevelDialog from './NaturalnessLevelDialog';
 import SexSelectionDialog from './SexSelectionDialog';
 import AgeSelectionDialog from "./AgeSelectionDialog";
+import SpatialOrientationLevelDialog from './SpatialOrientationLevelDialog';
 
 const epsg4326 = "EPSG:4326";
 const epsg2180 = "EPSG:2180";
@@ -40,11 +41,14 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const maxAge = 99;
     const minNaturalness = 1;
     const maxNaturalness = 3;
+    const minSpatialOrientationLevel = 1;
+    const maxSpatialOrientationLevel = 3;
 
     const [level, setLevel] = useState(defaultLevel);
     const [baseLayers, setBaseLayers] = useState([]);
     const [geoDescConfirmationDialogVisible, setGeoDescConfirmationDialogVisible] = useState(false);
     const [naturalnessDialogVisible, setNaturalnessDialogVisible] = useState(false);
+    const [spatialOrientationDialogVisible, setSpatialOrientationDialogVisible] = useState(false);
     const [sexDialogVisible, setSexDialogVisible] = useState(true);
     const [ageDialogVisible, setAgeDialogVisible] = useState(false);
     const [age, setAge] = useState(20);
@@ -52,6 +56,7 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const [showInvalidAnswerToast, setShowInvalidAnswerToast] = useState(false);
     const [accuracy, setAccuracy] = useState(0);
     const [naturalness, setNaturalness] = useState(maxNaturalness);
+    const [spatialOrientationLevel, setSpatialOrientationLevel] = useState(maxSpatialOrientationLevel);
 
     const geoDescLayerRef = useRef(null);
     const initialGeoDescriptionsRef = useRef(geoDescriptions);
@@ -194,6 +199,17 @@ const ArcGISMap = ({ geoDescriptions }) => {
         }
         geoDescRepo.saveAge(age);
         setAgeDialogVisible(false);
+        setSpatialOrientationDialogVisible(true);
+    };
+
+    const handleSpatialOrientationLevelChange = () => {
+        if (!spatialOrientationLevel ||
+            (spatialOrientationLevel < minSpatialOrientationLevel ||
+                spatialOrientationLevel > maxSpatialOrientationLevel)) {
+            return;
+        }
+        geoDescRepo.saveSpatialOrientationLevel(spatialOrientationLevel);
+        setSpatialOrientationDialogVisible(false);
     };
 
     return (
@@ -256,6 +272,16 @@ const ArcGISMap = ({ geoDescriptions }) => {
                     age={age}
                     setAge={setAge}
                     handleAgeChange={handleAgeChange} />
+            )}
+
+            {spatialOrientationDialogVisible && (
+                <SpatialOrientationLevelDialog
+                    minLevel={minSpatialOrientationLevel}
+                    maxLevel={maxSpatialOrientationLevel}
+                    level={spatialOrientationLevel}
+                    setLevel={setSpatialOrientationLevel}
+                    handleRateLevel={handleSpatialOrientationLevelChange}
+                />
             )}
         </div>
     );
