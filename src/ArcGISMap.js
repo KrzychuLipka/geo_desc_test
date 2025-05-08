@@ -5,13 +5,14 @@ import MapView from "@arcgis/core/views/MapView";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import esriConfig from "@arcgis/core/config";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import Compass from "@arcgis/core/widgets/Compass";
+// import Compass from "@arcgis/core/widgets/Compass";
 import Graphic from "@arcgis/core/Graphic";
 import proj4 from "proj4";
 import geoDescRepo from './GeoDescRepo';
 import log from './Logger';
 import GeoDescConfirmationDialog from './GeoDescConfirmationDialog';
 import InvalidAnswerToast from './InvalidAnswerToast';
+import AdequacyLevelDialog from './AdequacyLevelDialog';
 import NaturalnessLevelDialog from './NaturalnessLevelDialog';
 import SexSelectionDialog from './SexSelectionDialog';
 import AgeSelectionDialog from "./AgeSelectionDialog";
@@ -34,19 +35,22 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const baseMap = "topo-vector";
     const initialLng = 21.032305821089764;
     const initialLat = 52.09782069006153;
-    const initialZoom = 20;
+    const initialZoom = 21;
     const buildingId = 199;
     const defaultLevel = 3;
     const minAge = 17;
     const maxAge = 99;
     const minNaturalness = 1;
     const maxNaturalness = 3;
+    const minAdequacy = 1;
+    const maxAdequacy = 3;
     const minSpatialOrientationLevel = 1;
     const maxSpatialOrientationLevel = 3;
 
     const [level, setLevel] = useState(defaultLevel);
     const [baseLayers, setBaseLayers] = useState([]);
     const [geoDescConfirmationDialogVisible, setGeoDescConfirmationDialogVisible] = useState(false);
+    const [adequacyDialogVisible, setAdequacyDialogVisible] = useState(false);
     const [naturalnessDialogVisible, setNaturalnessDialogVisible] = useState(false);
     const [spatialOrientationDialogVisible, setSpatialOrientationDialogVisible] = useState(false);
     const [sexDialogVisible, setSexDialogVisible] = useState(true);
@@ -55,6 +59,7 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const [selectedGeoDescId, setSelectedGeoDescId] = useState(null);
     const [showInvalidAnswerToast, setShowInvalidAnswerToast] = useState(false);
     const [accuracy, setAccuracy] = useState(0);
+    const [adequacy, setAdequacy] = useState(maxAdequacy);
     const [naturalness, setNaturalness] = useState(maxNaturalness);
     const [spatialOrientationLevel, setSpatialOrientationLevel] = useState(maxSpatialOrientationLevel);
 
@@ -74,8 +79,8 @@ const ArcGISMap = ({ geoDescriptions }) => {
             center: [initialLng, initialLat],
             zoom: initialZoom,
         });
-        const compass = new Compass({ view: mapView });
-        mapView.ui.add(compass, "top-right");
+        // const compass = new Compass({ view: mapView });
+        // mapView.ui.add(compass, "top-right");
 
         const baseLayers = addBaseLayers(map);
         setBaseLayers(baseLayers);
@@ -101,6 +106,7 @@ const ArcGISMap = ({ geoDescriptions }) => {
             const activeGeoDesc = geoDescRepo.getActiveGeneratedGeoDescription();
             setAccuracy(activeGeoDesc?.accuracy);
             setNaturalness(activeGeoDesc?.naturalness);
+            setAdequacy(activeGeoDesc?.adequacy)
         };
 
         geoDescRepo.subscribe(handleGeoDescRepoUpdate);
@@ -163,7 +169,7 @@ const ArcGISMap = ({ geoDescriptions }) => {
         if (selectedGeoDescId === geoDescRepo.getActiveGeneratedGeoDescription()?.referenceDescId) {
             geoDescRepo.updateAccuracy(accuracy + 1);
             setGeoDescConfirmationDialogVisible(false);
-            setNaturalnessDialogVisible(true);
+            setAdequacyDialogVisible(true);
         } else {
             geoDescRepo.updateAccuracy(accuracy - 1);
             log(`selectedGeoDescId=${selectedGeoDescId}`);
@@ -177,6 +183,15 @@ const ArcGISMap = ({ geoDescriptions }) => {
     const handleNoClick = () => {
         setGeoDescConfirmationDialogVisible(false);
         setSelectedGeoDescId(null);
+    };
+
+    const handleRateAdequacy = () => {
+        if (!adequacy || (adequacy < minAdequacy || adequacy > maxAdequacy)) {
+            return;
+        }
+        geoDescRepo.updateAdequacy(adequacy);
+        setAdequacyDialogVisible(false);
+        setNaturalnessDialogVisible(true);
     };
 
     const handleRateNaturalness = () => {
@@ -248,6 +263,16 @@ const ArcGISMap = ({ geoDescriptions }) => {
 
             {showInvalidAnswerToast && (
                 <InvalidAnswerToast />
+            )}
+
+            {adequacyDialogVisible && (
+                <AdequacyLevelDialog
+                    minAdequacyLevel={minAdequacy}
+                    maxAdequacyLevel={maxAdequacy}
+                    adequacyLevel={adequacy}
+                    setAdequacyevel={setAdequacy}
+                    handleRateAdequacy={handleRateAdequacy}
+                />
             )}
 
             {naturalnessDialogVisible && (

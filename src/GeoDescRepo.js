@@ -21,6 +21,7 @@ class GeoDescRepo {
                 model: "deepseek-r1-distill-llama-8b",
                 accuracy: 0,
                 naturalness: 3,
+                adequacy: 3,
                 isActive: true,
             },
             {
@@ -29,6 +30,7 @@ class GeoDescRepo {
                 model: "human",
                 accuracy: 0,
                 naturalness: 3,
+                adequacy: 3,
                 isActive: false,
             },
             {
@@ -37,6 +39,7 @@ class GeoDescRepo {
                 model: "mistral-7b-instruct-v0.3",
                 accuracy: 0,
                 naturalness: 3,
+                adequacy: 3,
                 isActive: false,
             },
             {
@@ -45,6 +48,7 @@ class GeoDescRepo {
                 model: "mistral-7b-instruct-v0.3",
                 accuracy: 0,
                 naturalness: 3,
+                adequacy: 3,
                 isActive: false,
             },
             {
@@ -53,6 +57,7 @@ class GeoDescRepo {
                 model: "human",
                 accuracy: 0,
                 naturalness: 3,
+                adequacy: 3,
                 isActive: false,
             },
             {
@@ -61,6 +66,7 @@ class GeoDescRepo {
                 model: "deepseek-r1-distill-llama-8b",
                 accuracy: 0,
                 naturalness: 3,
+                adequacy: 3,
                 isActive: false,
             }
         ];
@@ -116,13 +122,24 @@ class GeoDescRepo {
         this.notifySubscribers();
     }
 
+    updateAdequacy(
+        adequacy
+    ) {
+        const activeGeoDesc = this
+            .generatedGeoDescriptions
+            .find((desc) => desc.isActive);
+        if (activeGeoDesc) {
+            activeGeoDesc.adequacy = adequacy;
+            this.notifySubscribers();
+        }
+    }
+
     updateNaturalness(
         naturalness
     ) {
         const activeGeoDesc = this
             .generatedGeoDescriptions
             .find((desc) => desc.isActive);
-
         if (activeGeoDesc) {
             activeGeoDesc.naturalness = naturalness;
             this.activateNextGeoDescription();
@@ -157,6 +174,7 @@ class GeoDescRepo {
                         referenceDescId: geoDesc.referenceDescId,
                         accuracy: geoDesc.accuracy,
                         naturalness: geoDesc.naturalness,
+                        adequacy: geoDesc.adequacy,
                     };
                 })
             });
@@ -178,6 +196,7 @@ class GeoDescRepo {
             console.log(geoDesc.model);
             console.log(geoDesc.accuracy);
             console.log(geoDesc.naturalness);
+            console.log(geoDesc.adequacy);
         }
     }
 
