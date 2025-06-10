@@ -88,7 +88,6 @@ class GeoDescRepo {
         return index !== -1 ? index + 1 : 1;
     }
 
-
     updateAccuracy(
         accuracy
     ) {

@@ -1,6 +1,3 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from nltk.translate.bleu_score import sentence_bleu
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -11,9 +8,11 @@ URL = "https://firestore.googleapis.com/v1/projects/geodesctest/databases/(defau
 response = requests.get(URL)
 response_json = response.json()
 documents = response_json['documents']
-user_test_results = {'deepseek': {'M': [], 'F': []}, 'mistral': {'M': [], 'F': []}}
-num_man_tests = 0
-num_women_tests = 0
+user_test_results = {
+    'deepseek': {},
+    'mistral': {}
+}
+num_tests_by_gender_age = {}
 geo_descriptions = [
     {
         'id': 2078,
@@ -60,15 +59,27 @@ def get_model_key(source):
         return "mistral"
     else:
         return None
-
+    
+def map_age_to_group(age):
+    age = int(age)
+    if age > 23 or age < 18:
+        return None
+    elif age <= 20:
+        return "18-20"
+    else:
+        return "21-23"    
+    
 for document in documents:
-    results = document['fields']['results']['arrayValue']['values']
     gender = document['fields']['gender']['stringValue']
-    if gender == 'M':
-        num_man_tests += 1
-    elif gender == 'F':
-        num_women_tests += 1    
-    for i, result in enumerate(results, start=1):
+    age = document['fields']['age']['integerValue']
+    group_key = map_age_to_group(age)
+    if group_key is None:
+        continue
+    gender_group_key = f"{gender}_{group_key}"
+    num_tests_by_gender_age[gender_group_key] = num_tests_by_gender_age.get(gender_group_key, 0) + 1
+    results = document['fields']['results']['arrayValue']['values']
+
+    for result in results:
         fields = result['mapValue']['fields']
         accuracy = int(fields['accuracy']['integerValue'])
         naturalness = int(fields['naturalness']['integerValue'])        
@@ -81,177 +92,86 @@ for document in documents:
         model_key = get_model_key(source)
         if not model_key:
             continue
-        user_test_results[model_key][gender].append(
-            (referenceDescId, accuracy, accuracy_0_1, naturalness)
-        )
+        if gender_group_key not in user_test_results[model_key]:
+            user_test_results[model_key][gender_group_key] = []
+        user_test_results[model_key][gender_group_key].append((referenceDescId, accuracy, accuracy_0_1, naturalness))
 
 def get_user_test_statistics(results):
-    accuracies = [result[1] for result in results]
-    accuracy_0_1s = [result[2] for result in results]
-    naturalnesses = [result[3] for result in results]
-    num_tests = len(results)
+    accuracies = [r[1] for r in results]
+    accuracy_0_1s = [r[2] for r in results]
+    naturalnesses = [r[3] for r in results]
     return {
-        'avg_accuracy': np.mean(accuracies) if num_tests > 0 else float('nan'),
-        'avg_accuracy_0_1': np.mean(accuracy_0_1s) if num_tests > 0 else float('nan'),
-        'avg_naturalness': np.mean(naturalnesses) if num_tests > 0 else float('nan'),
-        'median_accuracy': np.median(accuracies) if num_tests > 0 else float('nan'),
-        'median_accuracy_0_1': np.median(accuracy_0_1s) if num_tests > 0 else float('nan'),
-        'median_naturalness': np.median(naturalnesses) if num_tests > 0 else float('nan'),
-        'std_accuracy': np.std(accuracies) if num_tests > 0 else float('nan'),
-        'std_accuracy_0_1': np.std(accuracy_0_1s) if num_tests > 0 else float('nan'),
-        'std_naturalness': np.std(naturalnesses) if num_tests > 0 else float('nan'),
+        'avg_accuracy': np.mean(accuracies),
+        'avg_accuracy_0_1': np.mean(accuracy_0_1s),
+        'median_accuracy': np.median(accuracies),
+        'median_accuracy_0_1': np.median(accuracy_0_1s),
+        'avg_naturalness': np.mean(naturalnesses),
+        'median_naturalness': np.median(naturalnesses)
     }
 
-user_test_statistics = {
-    'deepseek_M': get_user_test_statistics(user_test_results['deepseek']['M']),
-    'deepseek_F': get_user_test_statistics(user_test_results['deepseek']['F']),
-    'mistral_M': get_user_test_statistics(user_test_results['mistral']['M']),
-    'mistral_F': get_user_test_statistics(user_test_results['mistral']['F']),
-}
+user_test_statistics = {}
+for model in user_test_results:
+    for gender_age_key in user_test_results[model]:
+        key = f"{model}_{gender_age_key}"
+        user_test_statistics[key] = get_user_test_statistics(user_test_results[model][gender_age_key])
 
-def filter_and_format_stats(stats):
-    return {k: float(v) for k, v in stats.items() if isinstance(v, (int, float, np.floating))}
+print("\n===== STATISTICAL DATA ANALYSIS =====\n")
+total_tests = sum(num_tests_by_gender_age.values())
+print(f"Total number of tests: {total_tests}\n")
+for key, stats in user_test_statistics.items():
+    model, gender, age = key.split('_')
+    gender_age_key = f"{gender}_{age}"
+    print(f"[{key}] Number of tests: {num_tests_by_gender_age.get(gender_age_key, 0)}")
+    for metric, val in stats.items():
+        print(f"  {metric}: {val:.2f}")
+    print()
 
-def calculate_sim_statistics(values):
-    return {
-        'avg': np.mean(values),
-        'med': np.median(values),
-        'std': np.std(values)
-    }
+desc_scores = {}  # {id: (sum_accuracy, aum_accuracy_01, sum_naturalness, count)}
+for model in user_test_results:
+    for group in user_test_results[model]:
+        for (desc_id, acc, _, nat) in user_test_results[model][group]:
+            if desc_id not in desc_scores:
+                desc_scores[desc_id] = [0, 0, 0]
+            desc_scores[desc_id][0] += acc
+            desc_scores[desc_id][1] += nat
+            desc_scores[desc_id][2] += 1
 
-def calculate_cosine_similarity(text1, text2):
-    vectorizer = TfidfVectorizer().fit_transform([text1, text2])
-    vectors = vectorizer.toarray()
-    return cosine_similarity(vectors)[0, 1]
+ranking = []
+for desc_id, (acc_sum, nat_sum, count) in desc_scores.items():
+    avg_acc = acc_sum / count
+    avg_nat = nat_sum / count
+    score = (avg_acc + avg_nat) / 2
+    ranking.append((desc_id, avg_acc, avg_nat, score))
 
-def calculate_bleu(reference, candidate):
-    reference_tokens = reference.split()
-    candidate_tokens = candidate.split()
-    return sentence_bleu([reference_tokens], candidate_tokens)
+ranking.sort(key=lambda x: x[3], reverse=True)
 
-def plot_similarity_stats(source):
-    cos_similarities = []
-    bleu_scores = []
-
-    for desc in geo_descriptions:
-        if desc['source'] == source:
-            cos_sim = calculate_cosine_similarity(desc['expert_desc'], desc['generated_desc'])
-            bleu = calculate_bleu(desc['expert_desc'], desc['generated_desc'])
-            cos_similarities.append(cos_sim)
-            bleu_scores.append(bleu)
-
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    
-    sns.boxplot(y=cos_similarities, ax=ax[0], color='skyblue')
-    mean_cos = np.mean(cos_similarities)
-    ax[0].set_title(f'Cosine Similarity - {source}')
-    ax[0].set_ylabel("Similarity")
-    ax[0].annotate(f'Mean: {mean_cos:.2f}', 
-                   xy=(0, mean_cos), 
-                   xytext=(0.1, mean_cos + 0.02), 
-                   textcoords='data',
-                   arrowprops=dict(arrowstyle='->', color='black'),
-                   fontsize=10)
-
-    sns.boxplot(y=bleu_scores, ax=ax[1], color='lightgreen')
-    mean_bleu = np.mean(bleu_scores)
-    ax[1].set_title(f'BLEU Score - {source}')
-    ax[1].set_ylabel("Score")
-    ax[1].annotate(f'Mean: {mean_bleu:.2f}', 
-                   xy=(0, mean_bleu), 
-                   xytext=(0.1, mean_bleu + 0.02), 
-                   textcoords='data',
-                   arrowprops=dict(arrowstyle='->', color='black'),
-                   fontsize=10)
-
-    plt.tight_layout()
-    plt.show()
+print("\n===== GEO-DESCRIPTIONS RANKING (by accuracy + naturalness) =====\n")
+for rank, (desc_id, acc, nat, score) in enumerate(ranking, 1):
+    print(f"{rank}. Geo-description ID: {desc_id} | Average accuracy: {acc:.2f} | Average naturalness: {nat:.2f} | Score: {score:.2f}")
 
 def plot_user_test_statistics(title, categories):
-    data = []
-    labels = []
-    stats_dict = {
-        'DeepSeek_M': filter_and_format_stats(user_test_statistics['deepseek_M']),
-        'DeepSeek_F': filter_and_format_stats(user_test_statistics['deepseek_F']),
-        'Mistral_M': filter_and_format_stats(user_test_statistics['mistral_M']),
-        'Mistral_F': filter_and_format_stats(user_test_statistics['mistral_F'])
-    }
-    for key, stats in stats_dict.items():
+    data, labels = [], []
+    for key, stats in user_test_statistics.items():
         for cat in categories:
-            data.append(stats[cat])
-            labels.append((key, cat))
-
-    model_gender = [label[0] for label in labels]
-    metrics = [label[1] for label in labels]
-
-    df = {
-        'Model_Gender': model_gender,
-        'Metric': metrics,
-        'Value': data
-    }
-
-    df = pd.DataFrame(df)
-    plt.figure(figsize=(12, 6))
-    sns.barplot(data=df, x="Metric", y="Value", hue="Model_Gender")
-    plt.title(title)
-    plt.legend(title="Model + Gender")
-    plt.tight_layout()
-    plt.show()
-
-def plot_user_test_statistics(title, categories):
-    data = []
-    labels = []
-    stats_dict = {
-        'DeepSeek_M': filter_and_format_stats(user_test_statistics['deepseek_M']),
-        'DeepSeek_F': filter_and_format_stats(user_test_statistics['deepseek_F']),
-        'Mistral_M': filter_and_format_stats(user_test_statistics['mistral_M']),
-        'Mistral_F': filter_and_format_stats(user_test_statistics['mistral_F'])
-    }
-
-    for key, stats in stats_dict.items():
-        for cat in categories:
-            data.append(stats[cat])
-            labels.append((key, cat))
+            if cat in stats:
+                data.append(stats[cat])
+                labels.append((key, cat))
 
     df = pd.DataFrame({
-        'Model_Gender': [label[0] for label in labels],
+        'Group': [label[0] for label in labels],
         'Metric': [label[1] for label in labels],
         'Value': data
     })
 
-    plt.figure(figsize=(12, 6))
-    ax = sns.barplot(data=df, x="Metric", y="Value", hue="Model_Gender")
-
-    # for p in ax.patches:
-    #     height = p.get_height()
-    #     ax.annotate(f'{height:.2f}',
-    #                 (p.get_x() + p.get_width() / 2., height),
-    #                 ha='center', va='bottom',
-    #                 fontsize=9, color='black', xytext=(0, 5),
-    #                 textcoords='offset points')
-
-    plt.title(f"{title} ({num_women_tests} women and {num_man_tests} men)")
-    plt.legend(title="Model + Gender")
+    plt.figure(figsize=(14, 6))
+    sns.barplot(data=df, x="Metric", y="Value", hue="Group")
+    plt.title(f"{title}")
+    plt.legend(title="Model + Gender_Age", loc="center left", bbox_to_anchor=(1, 0.5))
     plt.tight_layout()
     plt.show()
 
-naturalness_stats_categories = [
-    'avg_naturalness', 
-    'median_naturalness', 
-    'std_naturalness'
-]
-
-accuracy_stats_categories = [
-    'avg_accuracy', 
-    'avg_accuracy_0_1', 
-    'median_accuracy', 
-    'median_accuracy_0_1', 
-    'std_accuracy', 
-    'std_accuracy_0_1'
-]
+naturalness_stats_categories = ['avg_naturalness', 'median_naturalness']
+accuracy_stats_categories = ['avg_accuracy', 'avg_accuracy_0_1', 'median_accuracy', 'median_accuracy_0_1']
 
 plot_user_test_statistics("Accuracy test results", accuracy_stats_categories)
 plot_user_test_statistics("Naturalness test results", naturalness_stats_categories)
-
-plot_similarity_stats("deepseek-r1-distill-llama-8b")
-plot_similarity_stats("mistral-7b-instruct-v0.3")
