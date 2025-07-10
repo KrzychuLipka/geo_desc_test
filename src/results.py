@@ -1,3 +1,4 @@
+from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -162,3 +163,15 @@ adequacy_stats_categories = ['avg_adequacy', 'median_adequacy']
 plot_user_test_statistics("Accuracy test results", accuracy_stats_categories)
 plot_user_test_statistics("Naturalness test results", naturalness_stats_categories)
 plot_user_test_statistics("Adequacy test results", adequacy_stats_categories)
+
+accuracy_vals = []
+adequacy_vals = []
+
+for model_results in user_test_results.values():
+    for group_results in model_results.values():
+        for _, accuracy, _, _, adequacy in group_results:
+            accuracy_vals.append(accuracy)
+            adequacy_vals.append(adequacy)
+
+corr, _ = pearsonr(accuracy_vals, adequacy_vals)
+print(f"Korelacja między accuracy a adequacy: {corr:.2f}")
