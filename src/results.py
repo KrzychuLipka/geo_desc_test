@@ -72,6 +72,7 @@ def map_age_to_group(age):
 for document in documents:
     gender = document['fields']['gender']['stringValue']
     age = document['fields']['age']['integerValue']
+    spatialOrientationLevel = document['fields']['spatialOrientationLevel']['integerValue']# Jak użytkownik ocenia swoją orientację w budynku (w skali od 1 do 3)
     group_key = map_age_to_group(age)
     if group_key is None:
         continue
@@ -81,32 +82,36 @@ for document in documents:
 
     for result in results:
         fields = result['mapValue']['fields']
-        accuracy = int(fields['accuracy']['integerValue'])
-        naturalness = int(fields['naturalness']['integerValue'])        
-        accuracy_0_1 = 1 if accuracy == 1 else 0       
         referenceDescId = int(fields['referenceDescId']['integerValue']) 
         desc_entry = next((desc for desc in geo_descriptions if desc['id'] == referenceDescId), None)
         if not desc_entry:
             continue
+        accuracy = int(fields['accuracy']['integerValue'])
+        naturalness = int(fields['naturalness']['integerValue'])        
+        adequacy = int(fields['adequacy']['integerValue'])# Jak dobrze (w skali od 1 do 3) geo-opis opisuje przestrzeń w opini użytkownika
+        accuracy_0_1 = 1 if accuracy == 1 else 0       
         source = desc_entry['source']
         model_key = get_model_key(source)
         if not model_key:
             continue
         if gender_group_key not in user_test_results[model_key]:
             user_test_results[model_key][gender_group_key] = []
-        user_test_results[model_key][gender_group_key].append((referenceDescId, accuracy, accuracy_0_1, naturalness))
+        user_test_results[model_key][gender_group_key].append((referenceDescId, accuracy, accuracy_0_1, naturalness, adequacy))
 
 def get_user_test_statistics(results):
     accuracies = [r[1] for r in results]
     accuracy_0_1s = [r[2] for r in results]
     naturalnesses = [r[3] for r in results]
+    adequacys = [r[4] for r in results]
     return {
         'avg_accuracy': np.mean(accuracies),
         'avg_accuracy_0_1': np.mean(accuracy_0_1s),
+        'avg_naturalness': np.mean(naturalnesses),
+        'avg_adequacy': np.mean(adequacys),
+        'median_naturalness': np.median(naturalnesses),
         'median_accuracy': np.median(accuracies),
         'median_accuracy_0_1': np.median(accuracy_0_1s),
-        'avg_naturalness': np.mean(naturalnesses),
-        'median_naturalness': np.median(naturalnesses)
+        'median_adequacy': np.median(adequacys),
     }
 
 user_test_statistics = {}
@@ -125,29 +130,6 @@ for key, stats in user_test_statistics.items():
     for metric, val in stats.items():
         print(f"  {metric}: {val:.2f}")
     print()
-
-desc_scores = {}  # {id: (sum_accuracy, aum_accuracy_01, sum_naturalness, count)}
-for model in user_test_results:
-    for group in user_test_results[model]:
-        for (desc_id, acc, _, nat) in user_test_results[model][group]:
-            if desc_id not in desc_scores:
-                desc_scores[desc_id] = [0, 0, 0]
-            desc_scores[desc_id][0] += acc
-            desc_scores[desc_id][1] += nat
-            desc_scores[desc_id][2] += 1
-
-ranking = []
-for desc_id, (acc_sum, nat_sum, count) in desc_scores.items():
-    avg_acc = acc_sum / count
-    avg_nat = nat_sum / count
-    score = (avg_acc + avg_nat) / 2
-    ranking.append((desc_id, avg_acc, avg_nat, score))
-
-ranking.sort(key=lambda x: x[3], reverse=True)
-
-print("\n===== GEO-DESCRIPTIONS RANKING (by accuracy + naturalness) =====\n")
-for rank, (desc_id, acc, nat, score) in enumerate(ranking, 1):
-    print(f"{rank}. Geo-description ID: {desc_id} | Average accuracy: {acc:.2f} | Average naturalness: {nat:.2f} | Score: {score:.2f}")
 
 def plot_user_test_statistics(title, categories):
     data, labels = [], []
@@ -172,6 +154,8 @@ def plot_user_test_statistics(title, categories):
 
 naturalness_stats_categories = ['avg_naturalness', 'median_naturalness']
 accuracy_stats_categories = ['avg_accuracy', 'avg_accuracy_0_1', 'median_accuracy', 'median_accuracy_0_1']
+adequacy_stats_categories = ['avg_adequacy', 'median_adequacy']
 
 plot_user_test_statistics("Accuracy test results", accuracy_stats_categories)
 plot_user_test_statistics("Naturalness test results", naturalness_stats_categories)
+plot_user_test_statistics("Adequacy test results", adequacy_stats_categories)
