@@ -10,7 +10,8 @@ response_json = response.json()
 documents = response_json['documents']
 user_test_results = {
     'deepseek': {},
-    'mistral': {}
+    'mistral': {},
+    'human': {}
 }
 num_tests_by_gender_age = {}
 geo_descriptions = [
@@ -57,6 +58,8 @@ def get_model_key(source):
         return "deepseek"
     elif "mistral-7b-instruct-v0.3" == source:
         return "mistral"
+    elif "human" == source:
+        return source
     else:
         return None
     
