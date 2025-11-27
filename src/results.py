@@ -1,4 +1,3 @@
-from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -135,43 +134,158 @@ for key, stats in user_test_statistics.items():
         print(f"  {metric}: {val:.2f}")
     print()
 
-def plot_user_test_statistics(title, categories):
-    data, labels = [], []
-    for key, stats in user_test_statistics.items():
-        for cat in categories:
-            if cat in stats:
-                data.append(stats[cat])
-                labels.append((key, cat))
+def build_df_raw(metric_key):
+    metric_idx = {'accuracy': 1, 'accuracy_0_1': 2, 'naturalness': 3, 'adequacy': 4}[metric_key]
+    rows = []
+    for model, groups in user_test_results.items():
+        for gender_age_key, gvals in groups.items():
+            for r in gvals:
+                rows.append({
+                    "model": model,            # oś Y: model
+                    "gender_age": gender_age_key,  # kolor: grupa badana (np. male_21-23)
+                    "value": r[metric_idx],    # oś X: wartość metryki
+                })
+    return pd.DataFrame(rows)
 
-    df = pd.DataFrame({
-        'Group': [label[0] for label in labels],
-        'Metric': [label[1] for label in labels],
-        'Value': data
-    })
+def draw_box_scatter(metric_key, title, max_points=120, palette="Set2"):
+    df_raw = build_df_raw(metric_key)
 
-    plt.figure(figsize=(14, 6))
-    sns.barplot(data=df, x="Metric", y="Value", hue="Group")
-    plt.title(f"{title}")
-    plt.legend(title="Model + Gender_Age", loc="center left", bbox_to_anchor=(1, 0.5))
+    if df_raw.empty:
+        print("Brak danych dla metryki:", metric_key)
+        return
+
+    # ========== 1) Zakres osi X ==========
+    if metric_key == "accuracy_0_1":
+        xmin, xmax = -0.2, 1.2
+    else:
+        lo, hi = np.percentile(df_raw['value'], [1, 99])
+        pad = max(1.0, (hi - lo) * 0.08)
+        xmin, xmax = lo - pad, hi + pad
+
+    # ========== 2) Podpróbkowanie punktów ==========
+    # df_points = df_raw.sample(max_points, random_state=42) if len(df_raw) > max_points else df_raw.copy()
+    df_points = df_raw.copy()
+
+    # ========== 3) Rozmiar punktów ==========
+    point_size = 40 if metric_key == "accuracy_0_1" else 80
+
+    # ========== 4) Uporządkowanie osi i kolorów ==========
+    model_order = ["deepseek", "mistral", "human"]
+    group_order = ["male_21-23", "female_21-23", "male_18-20", "female_18-20"]
+    # zachowaj tylko grupy obecne w danych, w ustalonej kolejności
+    present_groups = [g for g in group_order if g in df_points['gender_age'].unique()]
+    # jeśli jakieś grupy mają inne etykiety (np. 'M_21-23'), dodaj dynamicznie
+    for g in sorted(df_points['gender_age'].unique()):
+        if g not in present_groups:
+            present_groups.append(g)
+
+    # paleta i mapowanie kolorów na grupy
+    palette_colors = sns.color_palette(palette, max(len(present_groups), 3))
+    group_to_color = dict(zip(present_groups, palette_colors))
+
+    plt.figure(figsize=(13, 6))
+
+    # BOXPLOT (bez hue — pokazuje rozkład całej próbki dla modelu)
+    sns.boxplot(
+        data=df_raw,
+        y="model",
+        x="value",
+        order=model_order,
+        orient="h",
+        width=0.5,
+        fliersize=0,
+        showcaps=True,
+        boxprops={'alpha': 0.25},
+        whiskerprops={'alpha': 0.5},
+        medianprops={'color': 'black', 'linewidth': 1.5}
+    )
+
+    # STRIP / DOTS (kolor = grupa badana)
+    sns.stripplot(
+       data=df_points,
+       y="model",
+       x="value",
+       order=model_order,
+       hue="gender_age",
+       hue_order=present_groups,
+       palette=group_to_color,
+       orient="h",
+       size=np.sqrt(point_size),
+       alpha=0.85,
+       jitter=0.35,
+       dodge=False,
+       linewidth=0.5,
+       edgecolor='gray'
+    )
+
+    # STRIP / DOTS (kolor = grupa badana)
+    # sns.stripplot(
+    #     data=df_points,
+    #     y="model",
+    #     x="value",
+    #     order=model_order,
+    #     hue="gender_age",
+    #     hue_order=present_groups,
+    #     palette=group_to_color,
+    #     orient="h",
+    #     size=np.sqrt(point_size),
+    #     alpha=0.85,
+    #     jitter=0.35,
+    #     dodge=False,
+    #     linewidth=0.5,
+    #     edgecolor='gray'
+    # )
+
+    # Tytuły i osie
+    plt.title(title, fontsize=16, fontweight='bold')
+    plt.xlabel(f"{metric_key}", fontsize=13)
+    # if metric_key == "accuracy_0_1":
+    #     plt.xlabel("Poziom trafności z uwzględnieniem tylko pierwszego trafienia (accuracy_0_1))", fontsize=13)
+    # elif metric_key == "accuracy":
+    #     plt.xlabel("Poziom trafności z uwzględnieniem wszystkich trafień (accuracy)", fontsize=13)
+    # elif metric_key == "naturalness":
+    #     plt.xlabel("Poziom naturalności geo-opisu (naturalness)", fontsize=13)
+    # elif metric_key == "adequacy":
+    #     plt.xlabel("Poziom adekwatności geo-opisu (adequacy)", fontsize=13)
+    # else:
+    #     plt.xlabel(f"Nieznana metryka", fontsize=13)
+    plt.ylabel("Model", fontsize=13)
+    plt.xlim(xmin, xmax)
+    plt.grid(axis='x', linestyle=':', alpha=0.4)
+
+    # Czytelniejsze ticki na osi X
+    try:
+        ticks = np.linspace(xmin, xmax, num=11)
+        plt.xticks(ticks)
+    except Exception:
+        pass
+
+    # Liczba punktów przy każdym modelu
+    for i, m in enumerate(model_order):
+        count = df_raw[df_raw['model'] == m].shape[0]
+        plt.text(xmax, i, f'n={count}', va='center', ha='left', fontsize=10, color='gray')
+
+    # Legenda po prawej u góry — ręcznie budowana z mapowania grup -> kolor
+    legend_handles = [
+        plt.Line2D([0], [0], marker='o', linestyle='',
+                   markerfacecolor=group_to_color[g], markeredgecolor='gray',
+                   markersize=8, label=g)
+        for g in present_groups
+    ]
+    plt.legend(
+        handles=legend_handles,
+        title="Grupa badana",
+        bbox_to_anchor=(1.06, 1.0),
+        loc='upper left',
+        frameon=True,
+        fontsize=11
+    )
+
     plt.tight_layout()
     plt.show()
 
-naturalness_stats_categories = ['avg_naturalness', 'median_naturalness']
-accuracy_stats_categories = ['avg_accuracy', 'avg_accuracy_0_1', 'median_accuracy', 'median_accuracy_0_1']
-adequacy_stats_categories = ['avg_adequacy', 'median_adequacy']
-
-plot_user_test_statistics("Accuracy test results", accuracy_stats_categories)
-plot_user_test_statistics("Naturalness test results", naturalness_stats_categories)
-plot_user_test_statistics("Adequacy test results", adequacy_stats_categories)
-
-accuracy_vals = []
-adequacy_vals = []
-
-for model_results in user_test_results.values():
-    for group_results in model_results.values():
-        for _, accuracy, _, _, adequacy in group_results:
-            accuracy_vals.append(accuracy)
-            adequacy_vals.append(adequacy)
-
-corr, _ = pearsonr(accuracy_vals, adequacy_vals)
-print(f"Korelacja między accuracy a adequacy: {corr:.2f}")
+# Przykłady wywołania:
+draw_box_scatter("accuracy", "Poziom trafności (z uwzględnieniem wszystkich prób)")
+draw_box_scatter("accuracy_0_1", "Poziom trafności (z uwzględnieniem tylko pierwszego wyboru)")
+draw_box_scatter("adequacy", "Poziom adekwatności")
+draw_box_scatter("naturalness", "Poziom naturalności")
