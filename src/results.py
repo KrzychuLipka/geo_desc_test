@@ -134,6 +134,17 @@ for key, stats in user_test_statistics.items():
         print(f"  {metric}: {val:.2f}")
     print()
 
+plt.rcParams.update({
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Arial"], 
+    "axes.titlesize": 18,
+    "axes.titleweight": "bold",
+    "axes.labelsize": 14,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 12
+})
+
 def build_df_raw(metric_key):
     metric_idx = {'accuracy': 1, 'accuracy_0_1': 2, 'naturalness': 3, 'adequacy': 4}[metric_key]
     rows = []
@@ -141,9 +152,9 @@ def build_df_raw(metric_key):
         for gender_age_key, gvals in groups.items():
             for r in gvals:
                 rows.append({
-                    "model": model,            # oś Y: model
-                    "gender_age": gender_age_key,  # kolor: grupa badana (np. male_21-23)
-                    "value": r[metric_idx],    # oś X: wartość metryki
+                    "model": model,
+                    "gender_age": gender_age_key,
+                    "value": r[metric_idx],
                 })
     return pd.DataFrame(rows)
 
@@ -153,7 +164,6 @@ def draw_group_means(metric_key, title, palette="Set2"):
         print("Brak danych dla metryki:", metric_key)
         return
 
-    # średnie per model + grupa
     df_means = df_raw.groupby(["model", "gender_age"])["value"].mean().reset_index()
 
     plt.figure(figsize=(12, 6))
@@ -166,18 +176,14 @@ def draw_group_means(metric_key, title, palette="Set2"):
         orient="h"
     )
 
-    # ustalenie dolnej granicy osi X
     min_val = df_means["value"].min()
     plt.xlim(left=min_val - 0.1 * abs(min_val))
 
-    plt.title(title, fontsize=16, fontweight='bold')
-    plt.xlabel(f"Średnia wartość metryki: {metric_key}", fontsize=13)
-    plt.ylabel("Model", fontsize=13)
+    plt.title(title)
+    plt.xlabel(f"Średnia wartość metryki: {metric_key}")
+    plt.ylabel("Model")
 
     plt.grid(axis='x', linestyle=':', alpha=0.4)
-
-    plt.xticks(rotation=0, fontsize=11)
-
     plt.tight_layout()
     plt.show()
     
