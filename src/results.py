@@ -147,145 +147,41 @@ def build_df_raw(metric_key):
                 })
     return pd.DataFrame(rows)
 
-def draw_box_scatter(metric_key, title, max_points=120, palette="Set2"):
+def draw_group_means(metric_key, title, palette="Set2"):
     df_raw = build_df_raw(metric_key)
-
     if df_raw.empty:
         print("Brak danych dla metryki:", metric_key)
         return
 
-    # ========== 1) Zakres osi X ==========
-    if metric_key == "accuracy_0_1":
-        xmin, xmax = -0.2, 1.2
-    else:
-        lo, hi = np.percentile(df_raw['value'], [1, 99])
-        pad = max(1.0, (hi - lo) * 0.08)
-        xmin, xmax = lo - pad, hi + pad
+    # średnie per model + grupa
+    df_means = df_raw.groupby(["model", "gender_age"])["value"].mean().reset_index()
 
-    # ========== 2) Podpróbkowanie punktów ==========
-    # df_points = df_raw.sample(max_points, random_state=42) if len(df_raw) > max_points else df_raw.copy()
-    df_points = df_raw.copy()
-
-    # ========== 3) Rozmiar punktów ==========
-    point_size = 40 if metric_key == "accuracy_0_1" else 80
-
-    # ========== 4) Uporządkowanie osi i kolorów ==========
-    model_order = ["deepseek", "mistral", "human"]
-    group_order = ["male_21-23", "female_21-23", "male_18-20", "female_18-20"]
-    # zachowaj tylko grupy obecne w danych, w ustalonej kolejności
-    present_groups = [g for g in group_order if g in df_points['gender_age'].unique()]
-    # jeśli jakieś grupy mają inne etykiety (np. 'M_21-23'), dodaj dynamicznie
-    for g in sorted(df_points['gender_age'].unique()):
-        if g not in present_groups:
-            present_groups.append(g)
-
-    # paleta i mapowanie kolorów na grupy
-    palette_colors = sns.color_palette(palette, max(len(present_groups), 3))
-    group_to_color = dict(zip(present_groups, palette_colors))
-
-    plt.figure(figsize=(13, 6))
-
-    # BOXPLOT (bez hue — pokazuje rozkład całej próbki dla modelu)
-    sns.boxplot(
-        data=df_raw,
-        y="model",
+    plt.figure(figsize=(12, 6))
+    sns.barplot(
+        data=df_means,
         x="value",
-        order=model_order,
-        orient="h",
-        width=0.5,
-        fliersize=0,
-        showcaps=True,
-        boxprops={'alpha': 0.25},
-        whiskerprops={'alpha': 0.5},
-        medianprops={'color': 'black', 'linewidth': 1.5}
+        y="model",
+        hue="gender_age",
+        palette=palette,
+        orient="h"
     )
 
-    # STRIP / DOTS (kolor = grupa badana)
-    sns.stripplot(
-       data=df_points,
-       y="model",
-       x="value",
-       order=model_order,
-       hue="gender_age",
-       hue_order=present_groups,
-       palette=group_to_color,
-       orient="h",
-       size=np.sqrt(point_size),
-       alpha=0.85,
-       jitter=0.35,
-       dodge=False,
-       linewidth=0.5,
-       edgecolor='gray'
-    )
+    # ustalenie dolnej granicy osi X
+    min_val = df_means["value"].min()
+    plt.xlim(left=min_val - 0.1 * abs(min_val))
 
-    # STRIP / DOTS (kolor = grupa badana)
-    # sns.stripplot(
-    #     data=df_points,
-    #     y="model",
-    #     x="value",
-    #     order=model_order,
-    #     hue="gender_age",
-    #     hue_order=present_groups,
-    #     palette=group_to_color,
-    #     orient="h",
-    #     size=np.sqrt(point_size),
-    #     alpha=0.85,
-    #     jitter=0.35,
-    #     dodge=False,
-    #     linewidth=0.5,
-    #     edgecolor='gray'
-    # )
-
-    # Tytuły i osie
     plt.title(title, fontsize=16, fontweight='bold')
-    plt.xlabel(f"{metric_key}", fontsize=13)
-    # if metric_key == "accuracy_0_1":
-    #     plt.xlabel("Poziom trafności z uwzględnieniem tylko pierwszego trafienia (accuracy_0_1))", fontsize=13)
-    # elif metric_key == "accuracy":
-    #     plt.xlabel("Poziom trafności z uwzględnieniem wszystkich trafień (accuracy)", fontsize=13)
-    # elif metric_key == "naturalness":
-    #     plt.xlabel("Poziom naturalności geo-opisu (naturalness)", fontsize=13)
-    # elif metric_key == "adequacy":
-    #     plt.xlabel("Poziom adekwatności geo-opisu (adequacy)", fontsize=13)
-    # else:
-    #     plt.xlabel(f"Nieznana metryka", fontsize=13)
+    plt.xlabel(f"Średnia wartość metryki: {metric_key}", fontsize=13)
     plt.ylabel("Model", fontsize=13)
-    plt.xlim(xmin, xmax)
+
     plt.grid(axis='x', linestyle=':', alpha=0.4)
 
-    # Czytelniejsze ticki na osi X
-    try:
-        ticks = np.linspace(xmin, xmax, num=11)
-        plt.xticks(ticks)
-    except Exception:
-        pass
-
-    # Liczba punktów przy każdym modelu
-    for i, m in enumerate(model_order):
-        count = df_raw[df_raw['model'] == m].shape[0]
-        plt.text(xmax, i, f'n={count}', va='center', ha='left', fontsize=10, color='gray')
-
-    # Legenda po prawej u góry — ręcznie budowana z mapowania grup -> kolor
-    legend_handles = [
-        plt.Line2D([0], [0], marker='o', linestyle='',
-                   markerfacecolor=group_to_color[g], markeredgecolor='gray',
-                   markersize=8, label=g)
-        for g in present_groups
-    ]
-    plt.legend(
-        handles=legend_handles,
-        title="Grupa badana",
-        bbox_to_anchor=(1.06, 1.0),
-        loc='upper left',
-        frameon=True,
-        fontsize=11
-    )
+    plt.xticks(rotation=0, fontsize=11)
 
     plt.tight_layout()
     plt.show()
-
-# Przykłady wywołania:
-draw_box_scatter("accuracy", "Poziom trafności (z uwzględnieniem wszystkich prób)")
-draw_box_scatter("accuracy_0_1", "Poziom trafności (z uwzględnieniem tylko pierwszego wyboru)")
-draw_box_scatter("adequacy", "Poziom adekwatności")
-draw_box_scatter("naturalness", "Poziom naturalności")
+    
+draw_group_means("accuracy", "Średni poziom trafności (z uwzględnieniem wszystkich prób)")
+draw_group_means("accuracy_0_1", "Średni poziom trafności (z uwzględnieniem tylko pierwszego wyboru)")
+draw_group_means("adequacy", "Średni poziom adekwatności")
+draw_group_means("naturalness", "Średni poziom naturalności")
